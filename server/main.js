@@ -45,20 +45,67 @@ function getBackupPath() {
 // Emit event to all listeners
 function emitEvent(data) {
   eventListeners.forEach(res => {
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    try {
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    } catch (e) {
+      // Ignore closed connections
+    }
   });
+}
+
+// Escape XML special characters
+function escapeXml(str) {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+// Get MIME type
+function getMimeType(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeTypes = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.heic': 'image/heic',
+    '.heif': 'image/heif',
+    '.webp': 'image/webp',
+    '.tiff': 'image/tiff',
+    '.tif': 'image/tiff',
+    '.dng': 'image/x-adobe-dng',
+    '.raw': 'image/x-raw',
+    '.cr2': 'image/x-canon-cr2',
+    '.nef': 'image/x-nikon-nef',
+    '.arw': 'image/x-sony-arw',
+    '.mov': 'video/quicktime',
+    '.mp4': 'video/mp4',
+    '.live': 'image/x-live-photo',
+    '.json': 'application/json',
+    '.xml': 'application/xml',
+  };
+  return mimeTypes[ext] || 'application/octet-stream';
 }
 
 // WebDAV request handler
 function handleWebDAV(req, res) {
-  // CORS headers for WebDAV
+  // iOS requires these headers for WebDAV
+  res.setHeader('DAV', '1, 2');
+  res.setHeader('Allow', 'OPTIONS, GET, HEAD, POST, PUT, DELETE, PROPFIND, MKCOL');
+  res.setHeader('MS-Author-Via', 'DAV');
+
+  // CORS headers for iOS
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PROPFIND, PROPPATCH, MKCOL, MOVE, COPY, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Content-Length, Authorization, Depth, Destination, If, Overwrite, X-Expected-Entity-Length');
-  res.setHeader('Access-Control-Expose-Headers', 'DAV, Content-Type, Upload-Offset, Location');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PROPFIND, MKCOL, MOVE, COPY, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Content-Length, Authorization, Depth, Destination, If, Overwrite, X-Expected-Entity-Length, Lock-Token, Timeout, Accept, Accept-Language, Content-Language, Host, User-Agent, Range');
+  res.setHeader('Access-Control-Expose-Headers', 'DAV, Content-Type, Upload-Offset, Location, Lock-Token, Timeout');
 
   if (req.method === 'OPTIONS') {
-    res.writeHead(204);
+    res.writeHead(200);
     res.end();
     return;
   }
@@ -71,22 +118,23 @@ function handleWebDAV(req, res) {
     serverState.connections = Math.max(0, serverState.connections - 1);
   });
 
-  const url = new URL(req.url, `http://localhost:${serverState.port}`);
-  const pathname = decodeURIComponent(url.pathname);
+  // Parse URL properly
+  const requestedPath = req.url;
   const backupPath = getBackupPath();
 
-  // Handle photos folder
-  let relativePath = pathname;
-  if (pathname.startsWith('/photos')) {
-    relativePath = pathname.replace('/photos', '');
+  // Normalize the path - remove /photos prefix if present
+  let relativePath = requestedPath;
+  if (requestedPath.startsWith('/photos')) {
+    relativePath = requestedPath.replace('/photos', '') || '/';
   }
 
-  const filePath = path.join(backupPath, relativePath === '/' ? '' : relativePath);
-  const dirPath = backupPath;
+  // Clean the path
+  const cleanPath = relativePath === '/' || relativePath === '' ? '' : relativePath;
+  const filePath = path.join(backupPath, cleanPath);
 
   // Ensure backup directory exists
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
+  if (!fs.existsSync(backupPath)) {
+    fs.mkdirSync(backupPath, { recursive: true });
   }
 
   const metadataDir = path.join(path.dirname(backupPath), 'MetaData');
@@ -97,8 +145,11 @@ function handleWebDAV(req, res) {
   try {
     switch (req.method) {
       case 'GET':
+      case 'HEAD':
+        handleGet(req, res, filePath);
+        break;
       case 'PROPFIND':
-        handlePropfind(req, res, filePath, pathname, dirPath);
+        handlePropfind(req, res, filePath, requestedPath);
         break;
       case 'PUT':
         handlePut(req, res, filePath, metadataDir);
@@ -109,8 +160,14 @@ function handleWebDAV(req, res) {
       case 'DELETE':
         handleDelete(req, res, filePath);
         break;
+      case 'MOVE':
+        handleMove(req, res, filePath);
+        break;
+      case 'COPY':
+        handleCopy(req, res, filePath);
+        break;
       default:
-        res.writeHead(405);
+        res.writeHead(405, { 'Allow': 'OPTIONS, GET, HEAD, POST, PUT, DELETE, PROPFIND, MKCOL' });
         res.end('Method not allowed');
     }
   } catch (err) {
@@ -120,10 +177,8 @@ function handleWebDAV(req, res) {
   }
 }
 
-function handlePropfind(req, res, filePath, urlPath, basePath) {
-  const depth = req.headers.depth || '1';
-
-  // If path doesn't exist, return 404
+function handleGet(req, res, filePath) {
+  // For GET requests, also check if it's a directory with index
   if (!fs.existsSync(filePath)) {
     res.writeHead(404);
     res.end('Not found');
@@ -132,82 +187,119 @@ function handlePropfind(req, res, filePath, urlPath, basePath) {
 
   const stat = fs.statSync(filePath);
 
-  // Generate response based on whether it's a file or directory
-  let responses = [];
-
   if (stat.isDirectory()) {
-    // Root or directory listing
-    responses.push(createDirResponse(urlPath === '/' ? '/photos/' : urlPath + '/'));
+    // For directories, return PROPFIND response
+    handlePropfind(req, res, filePath, req.url);
+    return;
+  }
 
-    if (depth !== '0') {
-      try {
-        const entries = fs.readdirSync(filePath);
-        for (const entry of entries) {
-          const entryPath = path.join(filePath, entry);
-          try {
-            const entryStat = fs.statSync(entryPath);
-            const entryUrl = urlPath.endsWith('/') ? urlPath + entry : urlPath + '/' + entry;
+  // Serve file
+  const fileSize = stat.size;
+  const range = req.headers.range;
 
-            if (entryStat.isDirectory()) {
-              responses.push(createDirResponse(entryUrl + '/'));
-            } else {
-              responses.push(createFileResponse(entryUrl, entryStat));
-            }
-          } catch (e) {
-            // Skip inaccessible entries
-          }
-        }
-      } catch (e) {
-        // Directory not readable
-      }
-    }
+  res.setHeader('Content-Type', getMimeType(filePath));
+  res.setHeader('Content-Length', fileSize);
+  res.setHeader('Accept-Ranges', 'bytes');
+  res.setHeader('ETag', `"${crypto.createHash('md5').update(stat.ino + '-' + stat.mtimeMs).digest('hex')}"`);
+  res.setHeader('Last-Modified', stat.mtime.toUTCString());
+
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    const chunkSize = end - start + 1;
+
+    res.writeHead(206, {
+      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+      'Content-Length': chunkSize
+    });
+
+    const stream = fs.createReadStream(filePath, { start, end });
+    stream.pipe(res);
   } else {
-    // Single file
-    responses.push(createFileResponse(urlPath, stat));
+    res.writeHead(200);
+    const stream = fs.createReadStream(filePath);
+    stream.pipe(res);
+  }
+}
+
+function handlePropfind(req, res, filePath, urlPath) {
+  const depth = req.headers.depth || '1';
+
+  // Normalize URL path
+  let normalizedPath = urlPath;
+  if (normalizedPath.startsWith('/photos')) {
+    normalizedPath = normalizedPath.replace('/photos', '') || '/';
+  }
+  if (!normalizedPath.endsWith('/') && fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+    normalizedPath = normalizedPath + '/';
+  }
+
+  // If path doesn't exist, create it
+  if (!fs.existsSync(filePath)) {
+    fs.mkdirSync(filePath, { recursive: true });
+  }
+
+  const stat = fs.statSync(filePath);
+  const responses = [];
+
+  // Root response
+  const href = normalizedPath === '/' ? '/' : normalizedPath;
+  responses.push(createResponse(href, stat, urlPath.startsWith('/photos') ? '/photos' : ''));
+
+  // List contents if directory and depth != 0
+  if (stat.isDirectory() && depth !== '0') {
+    try {
+      const entries = fs.readdirSync(filePath);
+      for (const entry of entries) {
+        const entryPath = path.join(filePath, entry);
+        try {
+          const entryStat = fs.statSync(entryPath);
+          const entryHref = href === '/' ? `/${entry}` : `${href}/${entry}`;
+          responses.push(createResponse(entryHref, entryStat, ''));
+        } catch (e) {
+          // Skip inaccessible entries
+        }
+      }
+    } catch (e) {
+      // Directory not readable
+    }
   }
 
   const xml = `<?xml version="1.0" encoding="utf-8"?>
 <D:multistatus xmlns:D="DAV:">
-  ${responses.join('')}
+${responses.join('\n')}
 </D:multistatus>`;
 
   res.writeHead(207, { 'Content-Type': 'application/xml; charset=utf-8' });
   res.end(xml);
 }
 
-function createDirResponse(href) {
-  const displayName = href === '/photos/' ? '' : path.basename(href.replace(/\/$/, ''));
-  return `
-  <D:response>
-    <D:href>${escapeXml(href)}</D:href>
-    <D:propstat>
-      <D:prop>
-        <D:displayname>${escapeXml(displayName)}</D:displayname>
-        <D:getcontenttype>httpd/unix-directory</D:getcontenttype>
-        <D:resourcetype><D:collection/></D:resourcetype>
-      </D:prop>
-      <D:status>HTTP/1.1 200 OK</D:status>
-    </D:propstat>
-  </D:response>`;
-}
+function createResponse(href, stat, prefix = '') {
+  const displayName = href === '/' ? '' : path.basename(href.replace(/\/$/, ''));
+  const fullHref = prefix + href;
+  const isDir = stat.isDirectory();
 
-function createFileResponse(href, stat) {
-  const displayName = path.basename(href);
-  const contentType = getMimeType(href);
-  const lastModified = stat.mtime.toUTCString();
-  const etag = `"${crypto.createHash('md5').update(stat.ino + '-' + stat.mtimeMs).digest('hex')}"`;
+  const lastMod = stat.mtime.toUTCString();
+  const resourceType = isDir ? '<D:collection/>' : '';
+  const contentType = isDir ? 'httpd/unix-directory' : getMimeType(href);
+  const contentLen = stat.size;
 
-  return `
-  <D:response>
-    <D:href>${escapeXml(href)}</D:href>
+  return `  <D:response>
+    <D:href>${escapeXml(fullHref)}</D:href>
     <D:propstat>
       <D:prop>
         <D:displayname>${escapeXml(displayName)}</D:displayname>
         <D:getcontenttype>${contentType}</D:getcontenttype>
-        <D:getcontentlength>${stat.size}</D:getcontentlength>
-        <D:getlastmodified>${lastModified}</D:getlastmodified>
-        <D:getetag>${etag}</D:getetag>
-        <D:resourcetype/>
+        <D:getcontentlength>${contentLen}</D:getcontentlength>
+        <D:getlastmodified>${lastMod}</D:getlastmodified>
+        <D:resourcetype>${resourceType}</D:resourcetype>
+        <D:supportedlock>
+          <D:lockentry>
+            <D:lockscope><D:exclusive/></D:lockscope>
+            <D:locktype><D:write/></D:locktype>
+          </D:lockentry>
+        </D:supportedlock>
       </D:prop>
       <D:status>HTTP/1.1 200 OK</D:status>
     </D:propstat>
@@ -225,7 +317,6 @@ function handlePut(req, res, filePath, metadataDir) {
   const filename = path.basename(filePath);
   const chunks = [];
   let uploadedSize = 0;
-  const contentLength = parseInt(req.headers['content-length'] || req.headers['x-expected-entity-length'] || '0', 10);
 
   req.on('data', (chunk) => {
     chunks.push(chunk);
@@ -277,13 +368,19 @@ function handlePut(req, res, filePath, metadataDir) {
 }
 
 function handleMkcol(req, res, filePath) {
-  if (!fs.existsSync(filePath)) {
+  if (fs.existsSync(filePath)) {
+    res.writeHead(405);
+    res.end('Directory already exists');
+    return;
+  }
+
+  try {
     fs.mkdirSync(filePath, { recursive: true });
     res.writeHead(201);
     res.end('Created');
-  } else {
-    res.writeHead(405);
-    res.end('Directory already exists');
+  } catch (e) {
+    res.writeHead(403);
+    res.end('Cannot create directory');
   }
 }
 
@@ -294,49 +391,114 @@ function handleDelete(req, res, filePath) {
     return;
   }
 
-  const stat = fs.statSync(filePath);
-  if (stat.isDirectory()) {
-    fs.rmSync(filePath, { recursive: true });
-  } else {
-    fs.unlinkSync(filePath);
+  try {
+    const stat = fs.statSync(filePath);
+    if (stat.isDirectory()) {
+      fs.rmSync(filePath, { recursive: true });
+    } else {
+      fs.unlinkSync(filePath);
+    }
+    res.writeHead(204);
+    res.end();
+  } catch (e) {
+    res.writeHead(403);
+    res.end('Cannot delete');
+  }
+}
+
+function handleMove(req, res, filePath) {
+  const destination = req.headers.destination;
+  if (!destination) {
+    res.writeHead(400);
+    res.end('Destination required');
+    return;
   }
 
-  res.writeHead(204);
-  res.end();
+  // Parse destination URL
+  let destPath = destination;
+  try {
+    const destUrl = new URL(destination);
+    destPath = destUrl.pathname;
+    if (destPath.startsWith('/photos')) {
+      destPath = destPath.replace('/photos', '') || '/';
+    }
+  } catch (e) {
+    // Use destination as-is
+  }
+
+  const destFilePath = path.join(getBackupPath(), destPath === '/' ? '' : destPath);
+
+  if (!fs.existsSync(filePath)) {
+    res.writeHead(404);
+    res.end('Source not found');
+    return;
+  }
+
+  try {
+    const stat = fs.statSync(filePath);
+    if (stat.isDirectory()) {
+      fs.mkdirSync(destFilePath, { recursive: true });
+      // Move contents
+      const entries = fs.readdirSync(filePath);
+      for (const entry of entries) {
+        fs.renameSync(path.join(filePath, entry), path.join(destFilePath, entry));
+      }
+      fs.rmdirSync(filePath);
+    } else {
+      fs.renameSync(filePath, destFilePath);
+    }
+    res.writeHead(201);
+    res.end('Moved');
+  } catch (e) {
+    res.writeHead(403);
+    res.end('Cannot move');
+  }
 }
 
-function escapeXml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+function handleCopy(req, res, filePath) {
+  const destination = req.headers.destination;
+  if (!destination) {
+    res.writeHead(400);
+    res.end('Destination required');
+    return;
+  }
 
-function getMimeType(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
-  const mimeTypes = {
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.png': 'image/png',
-    '.gif': 'image/gif',
-    '.heic': 'image/heic',
-    '.heif': 'image/heif',
-    '.webp': 'image/webp',
-    '.tiff': 'image/tiff',
-    '.tif': 'image/tiff',
-    '.dng': 'image/x-adobe-dng',
-    '.raw': 'image/x-raw',
-    '.cr2': 'image/x-canon-cr2',
-    '.nef': 'image/x-nikon-nef',
-    '.arw': 'image/x-sony-arw',
-    '.mov': 'video/quicktime',
-    '.mp4': 'video/mp4',
-    '.live': 'image/x-live-photo',
-    '.json': 'application/json',
-    '.xml': 'application/xml',
-  };
-  return mimeTypes[ext] || 'application/octet-stream';
+  let destPath = destination;
+  try {
+    const destUrl = new URL(destination);
+    destPath = destUrl.pathname;
+    if (destPath.startsWith('/photos')) {
+      destPath = destPath.replace('/photos', '') || '/';
+    }
+  } catch (e) {
+    // Use destination as-is
+  }
+
+  const destFilePath = path.join(getBackupPath(), destPath === '/' ? '' : destPath);
+
+  if (!fs.existsSync(filePath)) {
+    res.writeHead(404);
+    res.end('Source not found');
+    return;
+  }
+
+  try {
+    const stat = fs.statSync(filePath);
+    if (stat.isDirectory()) {
+      fs.mkdirSync(destFilePath, { recursive: true });
+      const entries = fs.readdirSync(filePath);
+      for (const entry of entries) {
+        fs.copyFileSync(path.join(filePath, entry), path.join(destFilePath, entry));
+      }
+    } else {
+      fs.copyFileSync(filePath, destFilePath);
+    }
+    res.writeHead(201);
+    res.end('Copied');
+  } catch (e) {
+    res.writeHead(403);
+    res.end('Cannot copy');
+  }
 }
 
 // Load saved photos from metadata
@@ -386,7 +548,6 @@ app.post('/api/server/start', (req, res) => {
   const localIp = getLocalIp();
 
   webdavServer = http.createServer((req, res) => {
-    // Inject authentication if enabled
     handleWebDAV(req, res);
   });
 
@@ -506,6 +667,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('1. Open Files app on your iPhone');
   console.log('2. Tap "..." or "+" to add a connection');
   console.log('3. Select "Connect to Server"');
-  console.log(`4. Enter the server URL shown in the web interface`);
+  console.log(`4. Enter: http://${getLocalIp()}:${PORT}`);
   console.log('');
 });
