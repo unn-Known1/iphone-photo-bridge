@@ -1,0 +1,2284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iPhone Photo Bridge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-dark: #0f0f0f;
+      --bg-card: #1a1a1a;
+      --primary: #6366f1;
+      --secondary: #22d3ee;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --border: #2d2d2d;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-card);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #3d3d3d;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4d4d4d;
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo svg {
+      width: 20px;
+      height: 20px;
+      color: white;
+    }
+
+    .header-title h1 {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .header-title p {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .status-badge.online {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+    }
+
+    .status-badge.offline {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--error);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .status-badge.online .status-dot {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .connection-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .connection-info svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Main Layout */
+    .main-layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 256px;
+      background-color: var(--bg-card);
+      border-right: 1px solid var(--border);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+      text-align: left;
+    }
+
+    .nav-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+    }
+
+    .nav-btn.active {
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--primary);
+    }
+
+    .nav-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Server Control */
+    .server-control {
+      margin-top: auto;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .server-btn {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .server-btn.start {
+      background: var(--primary);
+      color: white;
+    }
+
+    .server-btn.start:hover {
+      background: #5558e3;
+    }
+
+    .server-btn.stop {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--error);
+    }
+
+    .server-btn.stop:hover {
+      background: rgba(239, 68, 68, 0.2);
+    }
+
+    .server-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .server-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .server-url-box {
+      background: var(--bg-dark);
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 16px;
+    }
+
+    .server-url-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .server-url-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .copy-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .copy-btn:hover {
+      color: var(--primary);
+    }
+
+    .server-url {
+      font-family: monospace;
+      font-size: 14px;
+      word-break: break-all;
+    }
+
+    .qr-toggle {
+      width: 100%;
+      padding: 8px 16px;
+      border-radius: 12px;
+      border: none;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 12px;
+      transition: all 0.2s;
+    }
+
+    .qr-toggle:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+    }
+
+    .qr-box {
+      margin-top: 12px;
+      padding: 16px;
+      background: white;
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+    }
+
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .stat-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+
+    .stat-icon.primary { background: rgba(99, 102, 241, 0.1); color: var(--primary); }
+    .stat-icon.secondary { background: rgba(34, 211, 238, 0.1); color: var(--secondary); }
+    .stat-icon.success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+    .stat-icon.error { background: rgba(239, 68, 68, 0.1); color: var(--error); }
+
+    .stat-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title svg {
+      width: 20px;
+      height: 20px;
+      color: var(--primary);
+    }
+
+    /* Guide Steps */
+    .guide-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .guide-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .step-number {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .step-content h4 {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .step-content p {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    /* Upload Queue */
+    .upload-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .upload-item {
+      background: var(--bg-dark);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .upload-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .upload-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .upload-status {
+      width: 16px;
+      height: 16px;
+    }
+
+    .upload-status.uploading { color: var(--primary); animation: pulse 1s infinite; }
+    .upload-status.complete { color: var(--success); }
+    .upload-status.error { color: var(--error); }
+
+    .upload-name {
+      font-size: 14px;
+      font-weight: 500;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .upload-size {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .upload-progress {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .upload-progress-bar {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
+
+    /* Format Distribution */
+    .format-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 12px;
+    }
+
+    .format-item {
+      background: var(--bg-dark);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .format-count {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .format-name {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* Gallery */
+    .gallery-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .gallery-title {
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .gallery-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .gallery-grid {
+      column-count: 2;
+      column-gap: 12px;
+    }
+
+    @media (min-width: 768px) {
+      .gallery-grid { column-count: 3; }
+    }
+
+    @media (min-width: 1024px) {
+      .gallery-grid { column-count: 4; }
+    }
+
+    .gallery-item {
+      break-inside: avoid;
+      margin-bottom: 12px;
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--bg-card);
+      cursor: pointer;
+    }
+
+    .gallery-thumb {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-dark);
+    }
+
+    .gallery-thumb svg {
+      width: 48px;
+      height: 48px;
+      color: var(--text-secondary);
+    }
+
+    .gallery-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .gallery-item:hover .gallery-overlay {
+      opacity: 1;
+    }
+
+    .gallery-info {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 12px;
+    }
+
+    .gallery-filename {
+      font-size: 14px;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .gallery-size {
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+    }
+
+    .gallery-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 4px 8px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    /* Empty State */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 64px;
+    }
+
+    .empty-state svg {
+      width: 64px;
+      height: 64px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    .empty-state h2 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .empty-state p {
+      color: var(--text-secondary);
+      max-width: 400px;
+    }
+
+    /* Settings */
+    .settings-section {
+      margin-bottom: 24px;
+    }
+
+    .settings-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .setting-item {
+      margin-bottom: 16px;
+    }
+
+    .setting-label {
+      display: block;
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .setting-input {
+      width: 100%;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+
+    .setting-input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .setting-text h4 {
+      font-weight: 500;
+    }
+
+    .setting-text p {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    /* Toggle */
+    .toggle {
+      width: 48px;
+      height: 24px;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.2);
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle.active {
+      background: var(--primary);
+    }
+
+    .toggle-knob {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: white;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.2s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .toggle.active .toggle-knob {
+      transform: translateX(24px);
+    }
+
+    /* iPhone Guide Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 24px;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--bg-card);
+      border-radius: 16px;
+      max-width: 500px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(34,211,238,0.1));
+    }
+
+    .modal-header-content {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .modal-header-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: rgba(99, 102, 241, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+    }
+
+    .modal-header-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .modal-header h3 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .modal-header p {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .modal-body {
+      padding: 24px;
+    }
+
+    .guide-progress {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .guide-step-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .guide-step-btn.complete {
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--success);
+    }
+
+    .guide-step-btn.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .guide-step-btn.inactive {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-secondary);
+    }
+
+    .guide-step-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .guide-connector {
+      flex: 1;
+      height: 2px;
+      margin: 0 4px;
+    }
+
+    .guide-connector.complete {
+      background: var(--success);
+    }
+
+    .guide-connector.incomplete {
+      background: var(--border);
+    }
+
+    .guide-current {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .guide-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(99, 102, 241, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      flex-shrink: 0;
+    }
+
+    .guide-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .guide-current h4 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .guide-current p {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .guide-tip {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 16px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .guide-tip svg {
+      width: 20px;
+      height: 20px;
+      color: var(--warning);
+      flex-shrink: 0;
+    }
+
+    .guide-tip p {
+      font-size: 14px;
+      color: rgba(245, 158, 11, 0.9);
+    }
+
+    .guide-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 24px;
+    }
+
+    .guide-nav-btn {
+      padding: 8px 16px;
+      border-radius: 12px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .guide-nav-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+    }
+
+    .guide-nav-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .guide-nav-btn.primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .guide-nav-btn.primary:hover {
+      background: #5558e3;
+    }
+
+    .guide-step-indicator {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    /* Utility */
+    .hidden {
+      display: none !important;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+            <circle cx="9" cy="9" r="2"/>
+            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+          </svg>
+        </div>
+        <div class="header-title">
+          <h1>iPhone Photo Bridge</h1>
+          <p>Direct local network backup</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <div id="statusBadge" class="status-badge offline">
+          <span class="status-dot"></span>
+          <span>Offline</span>
+        </div>
+        <div class="connection-info">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+            <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+            <line x1="12" x2="12.01" y1="20" y2="20"/>
+          </svg>
+          <span id="ipAddress">Not connected</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Layout -->
+    <div class="main-layout">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <nav class="nav">
+          <button class="nav-btn active" data-tab="dashboard">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"/>
+              <path d="m19 9-5 5-4-4-3 3"/>
+            </svg>
+            Dashboard
+          </button>
+          <button class="nav-btn" data-tab="gallery">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+              <circle cx="9" cy="9" r="2"/>
+              <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+            </svg>
+            Gallery
+          </button>
+          <button class="nav-btn" data-tab="settings">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            Settings
+          </button>
+        </nav>
+
+        <!-- Server Control -->
+        <div class="server-control">
+          <button id="serverBtn" class="server-btn start">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="20" height="14" x="2" y="3" rx="2"/>
+              <line x1="8" x2="16" y1="21" y2="21"/>
+              <line x1="12" x2="12" y1="17" y2="21"/>
+            </svg>
+            <span>Start Server</span>
+          </button>
+
+          <div id="serverUrlBox" class="server-url-box hidden">
+            <div class="server-url-header">
+              <span class="server-url-label">Connection URL</span>
+              <button id="copyUrlBtn" class="copy-btn" title="Copy URL">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                </svg>
+              </button>
+            </div>
+            <p id="serverUrl" class="server-url"></p>
+          </div>
+
+          <button id="qrToggle" class="qr-toggle hidden">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="5" height="5" x="3" y="3" rx="1"/>
+              <rect width="5" height="5" x="16" y="3" rx="1"/>
+              <rect width="5" height="5" x="3" y="16" rx="1"/>
+              <path d="M21 16h-3a2 2 0 0 0-2 2v3"/>
+              <path d="M21 21v.01"/>
+              <path d="M12 7v3a2 2 0 0 1-2 2H7"/>
+              <path d="M3 12h.01"/>
+              <path d="M12 3h.01"/>
+              <path d="M12 16v.01"/>
+              <path d="M16 12h1"/>
+              <path d="M21 12v.01"/>
+              <path d="M12 21v-1"/>
+            </svg>
+            Show QR Code
+          </button>
+
+          <div id="qrBox" class="qr-box hidden">
+            <canvas id="qrCanvas"></canvas>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Dashboard Tab -->
+        <div id="dashboardTab" class="tab-content active">
+          <!-- Stats Grid -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon primary">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                  <circle cx="9" cy="9" r="2"/>
+                  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                </svg>
+              </div>
+              <p id="photoCount" class="stat-value">0</p>
+              <p class="stat-label">Photos Backed Up</p>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2.5 2v17a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-17a.5.5 0 0 0-.5-.5H19v7a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 21v-7H2.5a.5.5 0 0 0-.5.5z"/>
+                  <path d="M2 2h17v17H2z"/>
+                </svg>
+              </div>
+              <p id="storageUsed" class="stat-value">0 B</p>
+              <p class="stat-label">Storage Used</p>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon success">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 3v18h18"/>
+                  <path d="m19 9-5 5-4-4-3 3"/>
+                </svg>
+              </div>
+              <p id="activeConnections" class="stat-value">0</p>
+              <p class="stat-label">Active Connections</p>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon error">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="20" height="14" x="2" y="3" rx="2"/>
+                  <line x1="8" x2="16" y1="21" y2="21"/>
+                  <line x1="12" x2="12" y1="17" y2="21"/>
+                </svg>
+              </div>
+              <p id="serverStatus" class="stat-value">Offline</p>
+              <p class="stat-label">Server Status</p>
+            </div>
+          </div>
+
+          <!-- Upload Queue -->
+          <div id="uploadQueueCard" class="card hidden">
+            <h3 class="card-title">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" x2="12" y1="3" y2="15"/>
+              </svg>
+              Upload Queue
+            </h3>
+            <div id="uploadList" class="upload-list"></div>
+          </div>
+
+          <!-- Format Distribution -->
+          <div id="formatCard" class="card hidden">
+            <h3 class="card-title">Photo Formats</h3>
+            <div id="formatGrid" class="format-grid"></div>
+          </div>
+
+          <!-- Quick Start Guide -->
+          <div id="guideCard" class="card">
+            <h3 class="card-title">Quick Start Guide</h3>
+            <div class="guide-steps">
+              <div class="guide-step">
+                <span class="step-number">1</span>
+                <div class="step-content">
+                  <h4>Start the Server</h4>
+                  <p>Click "Start Server" in the sidebar to begin</p>
+                </div>
+              </div>
+              <div class="guide-step">
+                <span class="step-number">2</span>
+                <div class="step-content">
+                  <h4>Open Files App on iPhone</h4>
+                  <p>Go to Files app and tap "..." or "+" to add connection</p>
+                </div>
+              </div>
+              <div class="guide-step">
+                <span class="step-number">3</span>
+                <div class="step-content">
+                  <h4>Connect to Server</h4>
+                  <p>Enter the server URL or scan the QR code</p>
+                </div>
+              </div>
+              <div class="guide-step">
+                <span class="step-number">4</span>
+                <div class="step-content">
+                  <h4>Backup Your Photos</h4>
+                  <p>Navigate to your photos and copy them to the server</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Connection Info Cards -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon primary">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2.5 2v17a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-17a.5.5 0 0 0-.5-.5H19v7a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 21v-7H2.5a.5.5 0 0 0-.5.5z"/>
+                </svg>
+              </div>
+              <p style="font-size: 16px; font-weight: 600;">All Formats Supported</p>
+              <p class="stat-label">HEIC, JPEG, PNG, RAW, ProRAW, Live Photos</p>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
+                </svg>
+              </div>
+              <p style="font-size: 16px; font-weight: 600;">Metadata Preserved</p>
+              <p class="stat-label">EXIF, GPS, dates, camera info</p>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon success">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+                  <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                  <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                  <line x1="12" x2="12.01" y1="20" y2="20"/>
+                </svg>
+              </div>
+              <p style="font-size: 16px; font-weight: 600;">Local Network Only</p>
+              <p class="stat-label">Your photos never leave your network</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gallery Tab -->
+        <div id="galleryTab" class="tab-content">
+          <div id="galleryEmpty" class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/>
+              <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+              <path d="M2 15h10"/>
+              <path d="m9 18 3-3-3-3"/>
+            </svg>
+            <h2>No Photos Yet</h2>
+            <p>Start the server and connect your iPhone to begin backing up photos. They will appear here once uploaded.</p>
+          </div>
+          <div id="galleryContent" class="hidden">
+            <div class="gallery-header">
+              <h2 id="galleryTitle" class="gallery-title">0 Photos</h2>
+              <div class="gallery-meta">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+                  <line x1="16" x2="16" y1="2" y2="6"/>
+                  <line x1="8" x2="8" y1="2" y2="6"/>
+                  <line x1="3" x2="21" y1="10" y2="10"/>
+                </svg>
+                <span id="galleryDate">-</span>
+              </div>
+            </div>
+            <div id="galleryGrid" class="gallery-grid"></div>
+          </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settingsTab" class="tab-content">
+          <div class="card">
+            <h3 class="settings-title">Server Configuration</h3>
+            <div class="setting-item">
+              <label class="setting-label">Port</label>
+              <input type="number" id="portInput" class="setting-input" value="8080" min="1024" max="65535">
+            </div>
+            <div class="setting-item">
+              <div class="setting-row">
+                <div class="setting-text">
+                  <h4>Authentication</h4>
+                  <p>Require username and password</p>
+                </div>
+                <div id="authToggle" class="toggle">
+                  <div class="toggle-knob"></div>
+                </div>
+              </div>
+            </div>
+            <div id="authFields" class="hidden">
+              <div class="setting-item">
+                <label class="setting-label">Username</label>
+                <input type="text" id="usernameInput" class="setting-input" placeholder="admin">
+              </div>
+              <div class="setting-item">
+                <label class="setting-label">Password</label>
+                <input type="password" id="passwordInput" class="setting-input" placeholder="password">
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 class="settings-title">Backup Settings</h3>
+            <div class="setting-item">
+              <label class="setting-label">Backup Location</label>
+              <input type="text" id="backupPathInput" class="setting-input" value="~/iPhonePhotoBridge/Backups">
+            </div>
+            <div class="setting-item">
+              <div class="setting-row">
+                <div class="setting-text">
+                  <h4>Auto-organize</h4>
+                  <p>Automatically organize photos by date</p>
+                </div>
+                <div id="autoOrganizeToggle" class="toggle active">
+                  <div class="toggle-knob"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    // State
+    const state = {
+      serverRunning: false,
+      serverUrl: '',
+      localIp: '',
+      photos: [],
+      uploadQueue: [],
+      config: {
+        port: 8080,
+        authEnabled: false,
+        username: '',
+        password: '',
+        autoOrganize: true,
+        backupPath: '~/iPhonePhotoBridge/Backups'
+      }
+    };
+
+    // DOM Elements
+    const elements = {
+      statusBadge: document.getElementById('statusBadge'),
+      ipAddress: document.getElementById('ipAddress'),
+      serverBtn: document.getElementById('serverBtn'),
+      serverUrlBox: document.getElementById('serverUrlBox'),
+      serverUrl: document.getElementById('serverUrl'),
+      qrToggle: document.getElementById('qrToggle'),
+      qrBox: document.getElementById('qrBox'),
+      qrCanvas: document.getElementById('qrCanvas'),
+      copyUrlBtn: document.getElementById('copyUrlBtn'),
+      photoCount: document.getElementById('photoCount'),
+      storageUsed: document.getElementById('storageUsed'),
+      activeConnections: document.getElementById('activeConnections'),
+      serverStatus: document.getElementById('serverStatus'),
+      uploadQueueCard: document.getElementById('uploadQueueCard'),
+      uploadList: document.getElementById('uploadList'),
+      formatCard: document.getElementById('formatCard'),
+      formatGrid: document.getElementById('formatGrid'),
+      guideCard: document.getElementById('guideCard'),
+      galleryEmpty: document.getElementById('galleryEmpty'),
+      galleryContent: document.getElementById('galleryContent'),
+      galleryTitle: document.getElementById('galleryTitle'),
+      galleryDate: document.getElementById('galleryDate'),
+      galleryGrid: document.getElementById('galleryGrid'),
+      portInput: document.getElementById('portInput'),
+      authToggle: document.getElementById('authToggle'),
+      authFields: document.getElementById('authFields'),
+      usernameInput: document.getElementById('usernameInput'),
+      passwordInput: document.getElementById('passwordInput'),
+      backupPathInput: document.getElementById('backupPathInput'),
+      autoOrganizeToggle: document.getElementById('autoOrganizeToggle')
+    };
+
+    // Tab Navigation
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.getElementById(tab + 'Tab').classList.add('active');
+      });
+    });
+
+    // Server Control
+    elements.serverBtn.addEventListener('click', async () => {
+      if (state.serverRunning) {
+        await stopServer();
+      } else {
+        await startServer();
+      }
+    });
+
+    async function startServer() {
+      elements.serverBtn.disabled = true;
+      elements.serverBtn.innerHTML = '<div class="spinner"></div><span>Starting...</span>';
+
+      try {
+        const response = await fetch('/api/server/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(state.config)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          state.serverRunning = true;
+          state.serverUrl = data.url;
+          state.localIp = data.localIp;
+
+          updateServerUI();
+          startEventSource();
+        } else {
+          alert('Failed to start server: ' + (data.error || 'Unknown error'));
+        }
+      } catch (e) {
+        // Demo mode
+        state.serverRunning = true;
+        state.serverUrl = 'http://192.168.1.100:' + state.config.port;
+        state.localIp = '192.168.1.100';
+        updateServerUI();
+      }
+
+      elements.serverBtn.disabled = false;
+    }
+
+    async function stopServer() {
+      elements.serverBtn.disabled = true;
+      elements.serverBtn.innerHTML = '<div class="spinner"></div><span>Stopping...</span>';
+
+      try {
+        await fetch('/api/server/stop', { method: 'POST' });
+      } catch (e) {
+        console.log('Demo mode');
+      }
+
+      state.serverRunning = false;
+      state.serverUrl = '';
+      updateServerUI();
+
+      elements.serverBtn.disabled = false;
+    }
+
+    function updateServerUI() {
+      if (state.serverRunning) {
+        elements.statusBadge.className = 'status-badge online';
+        elements.statusBadge.innerHTML = '<span class="status-dot"></span><span>Online</span>';
+        elements.ipAddress.textContent = state.localIp;
+        elements.serverStatus.textContent = 'Online';
+
+        elements.serverBtn.className = 'server-btn stop';
+        elements.serverBtn.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="20" height="14" x="2" y="3" rx="2"/>
+            <line x1="8" x2="16" y1="21" y2="21"/>
+            <line x1="12" x2="12" y1="17" y2="21"/>
+          </svg>
+          <span>Stop Server</span>
+        `;
+
+        elements.serverUrlBox.classList.remove('hidden');
+        elements.serverUrl.textContent = state.serverUrl;
+        elements.qrToggle.classList.remove('hidden');
+        elements.guideCard.classList.add('hidden');
+
+        generateQRCode(state.serverUrl);
+      } else {
+        elements.statusBadge.className = 'status-badge offline';
+        elements.statusBadge.innerHTML = '<span class="status-dot"></span><span>Offline</span>';
+        elements.ipAddress.textContent = 'Not connected';
+        elements.serverStatus.textContent = 'Offline';
+
+        elements.serverBtn.className = 'server-btn start';
+        elements.serverBtn.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="20" height="14" x="2" y="3" rx="2"/>
+            <line x1="8" x2="16" y1="21" y2="21"/>
+            <line x1="12" x2="12" y1="17" y2="21"/>
+          </svg>
+          <span>Start Server</span>
+        `;
+
+        elements.serverUrlBox.classList.add('hidden');
+        elements.qrBox.classList.add('hidden');
+        elements.qrToggle.classList.add('hidden');
+        elements.qrToggle.textContent = 'Show QR Code';
+        elements.guideCard.classList.remove('hidden');
+      }
+    }
+
+    // QR Code
+    elements.qrToggle.addEventListener('click', () => {
+      const isHidden = elements.qrBox.classList.contains('hidden');
+      elements.qrBox.classList.toggle('hidden');
+      elements.qrToggle.textContent = isHidden ? 'Hide QR Code' : 'Show QR Code';
+    });
+
+    function generateQRCode(url) {
+      const canvas = elements.qrCanvas;
+      const ctx = canvas.getContext('2d');
+      const size = 160;
+      canvas.width = size;
+      canvas.height = size;
+
+      // Simple QR code placeholder (in production, use a proper QR library)
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, size, size);
+      ctx.fillStyle = '#000';
+      ctx.font = '12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('Scan to Connect', size/2, size/2);
+      ctx.fillText(url.substring(7, 30) + '...', size/2, size/2 + 20);
+
+      // Draw QR pattern
+      drawQRPlaceholder(ctx, size);
+    }
+
+    function drawQRPlaceholder(ctx, size) {
+      const cellSize = size / 11;
+
+      // Corner patterns
+      [[0,0], [8,0], [0,8]].forEach(([x, y]) => {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(x * cellSize, y * cellSize, 3 * cellSize, 3 * cellSize);
+        ctx.fillStyle = 'white';
+        ctx.fillRect((x+1) * cellSize, (y+1) * cellSize, cellSize, cellSize);
+        ctx.fillStyle = '#000';
+        ctx.fillRect((x+1) * cellSize, (y+1) * cellSize, cellSize, cellSize);
+      });
+
+      // Random data pattern
+      ctx.fillStyle = '#000';
+      for (let i = 0; i < 20; i++) {
+        const x = Math.floor(Math.random() * 8) + 2;
+        const y = Math.floor(Math.random() * 8) + 2;
+        if ((x < 3 && y < 3) || (x >= 8 && y < 3) || (x < 3 && y >= 8)) continue;
+        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+      }
+    }
+
+    // Copy URL
+    elements.copyUrlBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(state.serverUrl);
+      elements.copyUrlBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      `;
+      setTimeout(() => {
+        elements.copyUrlBtn.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+          </svg>
+        `;
+      }, 2000);
+    });
+
+    // Event Source
+    let eventSource = null;
+
+    function startEventSource() {
+      if (eventSource) {
+        eventSource.close();
+      }
+
+      eventSource = new EventSource('/api/events');
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handleEvent(data);
+        } catch (e) {
+          console.error('Failed to parse event:', e);
+        }
+      };
+
+      eventSource.onerror = () => {
+        eventSource.close();
+      };
+    }
+
+    function handleEvent(data) {
+      if (data.type === 'connection') {
+        state.uploadQueue.push({
+          id: Date.now(),
+          filename: 'Connection established',
+          size: 0,
+          status: 'complete'
+        });
+        updateUploadQueue();
+      } else if (data.type === 'upload') {
+        const existing = state.uploadQueue.find(u => u.filename === data.filename);
+        if (existing) {
+          existing.progress = data.progress;
+          existing.status = data.status;
+
+          if (data.status === 'complete') {
+            state.photos.push({
+              id: data.hash || Date.now().toString(),
+              filename: data.filename,
+              size: data.size,
+              format: data.metadata?.format || 'Unknown',
+              dateCreated: data.metadata?.dateCreated || new Date().toISOString()
+            });
+            updateStats();
+            updateGallery();
+          }
+        }
+        updateUploadQueue();
+      }
+    }
+
+    // Upload Queue
+    function updateUploadQueue() {
+      if (state.uploadQueue.length === 0) {
+        elements.uploadQueueCard.classList.add('hidden');
+        return;
+      }
+
+      elements.uploadQueueCard.classList.remove('hidden');
+      elements.uploadList.innerHTML = state.uploadQueue.slice(-5).map(item => `
+        <div class="upload-item">
+          <div class="upload-header">
+            <div class="upload-info">
+              ${getStatusIcon(item.status)}
+              <span class="upload-name">${item.filename}</span>
+            </div>
+            <span class="upload-size">${formatBytes(item.size)}</span>
+          </div>
+          ${item.status === 'uploading' ? `
+            <div class="upload-progress">
+              <div class="upload-progress-bar" style="width: ${item.progress || 0}%"></div>
+            </div>
+          ` : ''}
+        </div>
+      `).join('');
+    }
+
+    function getStatusIcon(status) {
+      const icons = {
+        pending: '<svg class="upload-status" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+        uploading: '<svg class="upload-status uploading" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>',
+        complete: '<svg class="upload-status complete" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+        error: '<svg class="upload-status error" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>'
+      };
+      return icons[status] || icons.pending;
+    }
+
+    // Stats
+    function updateStats() {
+      elements.photoCount.textContent = state.photos.length;
+
+      const totalSize = state.photos.reduce((sum, p) => sum + (p.size || 0), 0);
+      elements.storageUsed.textContent = formatBytes(totalSize);
+
+      // Format distribution
+      const formats = {};
+      state.photos.forEach(p => {
+        formats[p.format] = (formats[p.format] || 0) + 1;
+      });
+
+      if (Object.keys(formats).length > 0) {
+        elements.formatCard.classList.remove('hidden');
+        elements.formatGrid.innerHTML = Object.entries(formats).map(([format, count]) => `
+          <div class="format-item">
+            <p class="format-count">${count}</p>
+            <p class="format-name">${format}</p>
+          </div>
+        `).join('');
+      }
+    }
+
+    // Gallery
+    function updateGallery() {
+      if (state.photos.length === 0) {
+        elements.galleryEmpty.classList.remove('hidden');
+        elements.galleryContent.classList.add('hidden');
+        return;
+      }
+
+      elements.galleryEmpty.classList.add('hidden');
+      elements.galleryContent.classList.remove('hidden');
+
+      elements.galleryTitle.textContent = state.photos.length + ' Photos';
+
+      const dates = state.photos.map(p => new Date(p.dateCreated)).filter(d => !isNaN(d));
+      if (dates.length > 0) {
+        const latest = new Date(Math.max(...dates.map(d => d.getTime())));
+        elements.galleryDate.textContent = latest.toLocaleDateString();
+      }
+
+      elements.galleryGrid.innerHTML = state.photos.map(photo => `
+        <div class="gallery-item">
+          <div class="gallery-thumb">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+              <circle cx="9" cy="9" r="2"/>
+              <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+            </svg>
+          </div>
+          <div class="gallery-overlay">
+            <div class="gallery-info">
+              <p class="gallery-filename">${photo.filename}</p>
+              <p class="gallery-size">${formatBytes(photo.size)}</p>
+            </div>
+          </div>
+          <span class="gallery-badge">${photo.format}</span>
+        </div>
+      `).join('');
+    }
+
+    // Settings
+    elements.portInput.addEventListener('change', (e) => {
+      state.config.port = parseInt(e.target.value) || 8080;
+    });
+
+    elements.authToggle.addEventListener('click', () => {
+      state.config.authEnabled = !state.config.authEnabled;
+      elements.authToggle.classList.toggle('active', state.config.authEnabled);
+      elements.authFields.classList.toggle('hidden', !state.config.authEnabled);
+    });
+
+    elements.usernameInput.addEventListener('change', (e) => {
+      state.config.username = e.target.value;
+    });
+
+    elements.passwordInput.addEventListener('change', (e) => {
+      state.config.password = e.target.value;
+    });
+
+    elements.backupPathInput.addEventListener('change', (e) => {
+      state.config.backupPath = e.target.value;
+    });
+
+    elements.autoOrganizeToggle.addEventListener('click', () => {
+      state.config.autoOrganize = !state.config.autoOrganize;
+      elements.autoOrganizeToggle.classList.toggle('active', state.config.autoOrganize);
+    });
+
+    // Utility
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // Load initial data
+    async function loadInitialData() {
+      try {
+        const [statusRes, photosRes] = await Promise.all([
+          fetch('/api/server/status').then(r => r.json()).catch(() => ({})),
+          fetch('/api/photos').then(r => r.json()).catch(() => ({ photos: [] }))
+        ]);
+
+        if (statusRes.running) {
+          state.serverRunning = true;
+          state.serverUrl = statusRes.url;
+          state.localIp = statusRes.localIp;
+          updateServerUI();
+          startEventSource();
+        }
+
+        if (photosRes.photos) {
+          state.photos = photosRes.photos;
+          updateStats();
+          updateGallery();
+        }
+      } catch (e) {
+        console.log('Running in standalone mode');
+      }
+    }
+
+    // Initialize
+    loadInitialData();
+  </script>
+
+<script>
+/**
+ * Iframe 元素高亮注入脚本
+ * 需要在目标网站中引入此脚本来支持跨域 iframe 高亮功能
+ *
+ * 使用方法：
+ * 1. 将此脚本添加到目标网站的 HTML 中
+ * 2. 或通过浏览器扩展、用户脚本等方式注入
+ */
+
+(function () {
+  "use strict";
+
+  // 检查是否在 iframe 中
+  if (window.self === window.top) {
+    return; // 不在 iframe 中，不执行
+  }
+
+  // 检查是否已经初始化过
+  if (window.__iframeHighlightInitialized) {
+    return;
+  }
+  window.__iframeHighlightInitialized = true;
+  console.log("Iframe 高亮脚本已加载");
+
+  // 创建高亮覆盖层
+  var overlay = document.createElement("div");
+  overlay.id = "iframe-highlight-overlay";
+  overlay.style.cssText = "\n    position: fixed;\n    top: 0;\n    left: 0;\n    width: 100vw;\n    height: 100vh;\n    pointer-events: none;\n    z-index: 999999;\n    overflow: hidden;\n  ";
+
+  // 创建悬停高亮框（虚线边框）
+  var highlightBox = document.createElement("div");
+  highlightBox.id = "iframe-highlight-box";
+  highlightBox.style.cssText = "\n    position: absolute;\n    border: 2px dashed #007AFF;\n    background: rgba(0, 122, 255, 0.08);\n    pointer-events: none;\n    display: none;\n    transition: all 0.1s ease;\n    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);\n    border-radius: 2px;\n  ";
+
+  // 创建选中节点的常驻高亮框（实线边框）
+  var selectedBox = document.createElement("div");
+  selectedBox.id = "iframe-selected-box";
+  selectedBox.style.cssText = "\n    position: absolute;\n    border: 2px solid #007AFF;\n    pointer-events: none;\n    display: none;\n    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9), 0 0 8px rgba(255, 107, 53, 0.4);\n    border-radius: 2px;\n    z-index: 1000000;\n  ";
+
+  // 创建悬停标签显示
+  var tagLabel = document.createElement("div");
+  tagLabel.id = "iframe-tag-label";
+  tagLabel.style.cssText = "\n    position: absolute;\n    background: #007AFF;\n    color: white;\n    padding: 2px 6px;\n    font-size: 11px;\n    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;\n    border-radius: 2px;\n    pointer-events: none;\n    display: none;\n    white-space: nowrap;\n    z-index: 1000001;\n    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);\n    font-weight: 500;\n  ";
+
+  // 创建选中节点标签
+  var selectedLabel = document.createElement("div");
+  selectedLabel.id = "iframe-selected-label";
+  selectedLabel.style.cssText = "\n    position: absolute;\n    background: #007AFF;\n    color: white;\n    padding: 3px 8px;\n    font-size: 11px;\n    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;\n    border-radius: 3px;\n    pointer-events: none;\n    display: none;\n    white-space: nowrap;\n    z-index: 1000002;\n    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);\n    font-weight: 600;\n  ";
+  overlay.appendChild(highlightBox);
+  overlay.appendChild(selectedBox);
+  overlay.appendChild(tagLabel);
+  overlay.appendChild(selectedLabel);
+  document.body.appendChild(overlay);
+
+  // 存储当前选中的元素
+  var selectedElement = null;
+  var highlightEnabled = false;
+
+  // 更新选中元素的高亮显示
+  function updateSelectedHighlight(element) {
+    console.log("updateSelectedHighlight called with:", element);
+    if (!element) {
+      selectedBox.style.display = "none";
+      selectedLabel.style.display = "none";
+      selectedElement = null;
+      console.log("Cleared selected highlight");
+      return;
+    }
+    selectedElement = element;
+    var rect = element.getBoundingClientRect();
+    console.log("Selected element rect:", rect);
+
+    // 更新选中高亮框位置
+    selectedBox.style.display = "block";
+    selectedBox.style.left = "".concat(rect.left - 2, "px");
+    selectedBox.style.top = "".concat(rect.top - 2, "px");
+    selectedBox.style.width = "".concat(rect.width + 4, "px");
+    selectedBox.style.height = "".concat(rect.height + 4, "px");
+
+    // 更新选中标签位置和内容
+    selectedLabel.style.display = "block";
+    selectedLabel.textContent = "\u2713 <".concat(element.tagName.toLowerCase(), ">");
+
+    // 计算标签位置，确保不超出视窗
+    var labelTop = rect.top - 28;
+    var labelLeft = rect.left;
+
+    // 如果标签会超出顶部，显示在元素下方
+    if (labelTop < 5) {
+      labelTop = rect.bottom + 5;
+    }
+
+    // 如果标签会超出右侧，向左调整
+    var labelWidth = selectedLabel.offsetWidth || 100; // 预估宽度
+    if (labelLeft + labelWidth > window.innerWidth - 10) {
+      labelLeft = window.innerWidth - labelWidth - 10;
+    }
+    selectedLabel.style.left = "".concat(Math.max(5, labelLeft), "px");
+    selectedLabel.style.top = "".concat(labelTop, "px");
+    console.log("Selected highlight positioned at:", {
+      left: selectedBox.style.left,
+      top: selectedBox.style.top,
+      width: selectedBox.style.width,
+      height: selectedBox.style.height
+    });
+  }
+  function getElementSelector(element) {
+    if (!(element instanceof Element)) throw new Error('Argument must be a DOM element');
+    var segments = [];
+    var current = element;
+    while (current !== document.documentElement) {
+      var selector = '';
+      // 优先检查唯一ID
+      if (current.id && document.querySelectorAll("#".concat(current.id)).length === 1) {
+        segments.unshift("#".concat(current.id));
+        break; // ID唯一，无需继续向上
+      }
+
+      // 生成类名选择器（取第一个有效类名）
+      var classes = Array.from(current.classList).filter(function (c) {
+        return !c.startsWith('js-');
+      });
+      var className = classes.length > 0 ? ".".concat(classes[0]) : '';
+
+      // 生成位置索引（nth-child）
+      var tag = current.tagName.toLowerCase();
+      if (!className) {
+        var siblings = Array.from(current.parentNode.children);
+        var index = siblings.findIndex(function (el) {
+          return el === current;
+        }) + 1;
+        selector = "".concat(tag, ":nth-child(").concat(index, ")");
+      } else {
+        selector = className;
+      }
+      segments.unshift(selector);
+      current = current.parentElement;
+    }
+
+    // 处理根元素
+    if (current === document.documentElement) {
+      segments.unshift('html');
+    }
+    return segments.join(' > ');
+  }
+
+  // 获取元素文本内容
+  function getElementText(element) {
+    var _element$textContent;
+    if (element.tagName === "INPUT") {
+      return element.value || element.placeholder || "";
+    }
+    if (element.tagName === "TEXTAREA") {
+      return element.value || element.placeholder || "";
+    }
+    var text = ((_element$textContent = element.textContent) === null || _element$textContent === void 0 ? void 0 : _element$textContent.trim()) || "";
+    return text.length > 50 ? text.substring(0, 50) + "..." : text;
+  }
+
+  // 获取元素属性信息
+  function getElementAttributes(element) {
+    var attrs = {};
+    for (var i = 0; i < element.attributes.length; i++) {
+      var attr = element.attributes[i];
+      attrs[attr.name] = attr.value;
+    }
+    return attrs;
+  }
+
+  // 鼠标悬停事件处理
+  function handleMouseOver(e) {
+    if (!highlightEnabled) return;
+    var target = e.target;
+    if (!target || target === overlay || target === highlightBox || target === tagLabel || target === selectedBox || target === selectedLabel) {
+      return;
+    }
+
+    // 避免高亮 html 和 body 元素
+    if (target === document.documentElement || target === document.body) {
+      return;
+    }
+
+    // 如果是已选中的元素，不显示悬停高亮
+    if (target === selectedElement) {
+      highlightBox.style.display = "none";
+      tagLabel.style.display = "none";
+      return;
+    }
+    var rect = target.getBoundingClientRect();
+    var selector = getElementSelector(target);
+    var text = getElementText(target);
+    var attributes = getElementAttributes(target);
+
+    // 更新悬停高亮框位置
+    highlightBox.style.display = "block";
+    highlightBox.style.left = "".concat(rect.left - 2, "px");
+    highlightBox.style.top = "".concat(rect.top - 2, "px");
+    highlightBox.style.width = "".concat(rect.width + 4, "px");
+    highlightBox.style.height = "".concat(rect.height + 4, "px");
+
+    // 更新标签位置和内容
+    tagLabel.style.display = "block";
+    tagLabel.textContent = "<".concat(target.tagName.toLowerCase(), ">");
+
+    // 计算标签位置，确保不超出视窗
+    var labelTop = rect.top - 22;
+    var labelLeft = rect.left;
+
+    // 如果标签会超出顶部，显示在元素下方
+    if (labelTop < 0) {
+      labelTop = rect.bottom + 5;
+    }
+
+    // 如果标签会超出右侧，向左调整
+    if (labelLeft + tagLabel.offsetWidth > window.innerWidth) {
+      labelLeft = window.innerWidth - tagLabel.offsetWidth - 5;
+    }
+    tagLabel.style.left = "".concat(Math.max(0, labelLeft), "px");
+    tagLabel.style.top = "".concat(labelTop, "px");
+
+    // 发送消息到父窗口
+    var elementInfo = {
+      tagName: target.tagName.toLowerCase(),
+      rect: {
+        left: rect.left,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+        x: rect.x,
+        y: rect.y
+      },
+      selector: selector,
+      text: text,
+      attributes: attributes,
+      url: window.location.href,
+      path: window.location.pathname,
+      timestamp: Date.now()
+    };
+    try {
+      window.parent.postMessage({
+        type: "iframe-element-hover",
+        data: elementInfo,
+        source: "iframe-highlight-injector"
+      }, "*");
+    } catch (error) {
+      console.warn("无法发送消息到父窗口:", error);
+    }
+  }
+
+  // 鼠标离开事件处理
+  function handleMouseOut(e) {
+    if (!highlightEnabled) return;
+    var relatedTarget = e.relatedTarget;
+
+    // 如果鼠标移动到高亮相关元素上，不隐藏高亮
+    if (relatedTarget && (relatedTarget === highlightBox || relatedTarget === tagLabel || relatedTarget === overlay || relatedTarget === selectedBox || relatedTarget === selectedLabel)) {
+      return;
+    }
+    highlightBox.style.display = "none";
+    tagLabel.style.display = "none";
+    try {
+      window.parent.postMessage({
+        type: "iframe-element-hover",
+        data: null,
+        source: "iframe-highlight-injector"
+      }, "*");
+    } catch (error) {
+      console.warn("无法发送消息到父窗口:", error);
+    }
+  }
+
+  // 点击事件处理
+  function handleClick(e) {
+    var target = e.target;
+    if (!target || target === overlay || target === highlightBox || target === tagLabel || target === selectedBox || target === selectedLabel) {
+      return;
+    }
+
+    // 避免处理 html 和 body 元素
+    if (target === document.documentElement || target === document.body) {
+      return;
+    }
+
+    // 检查是否是交互元素，这些元素需要保留默认行为
+    var isInteractiveElement = ['input', 'textarea', 'select', 'button', 'a'].includes(target.tagName.toLowerCase());
+
+    // 如果高亮功能启用，对于非交互元素阻止默认行为和事件传播
+    if (highlightEnabled) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    var rect = target.getBoundingClientRect();
+    var selector = getElementSelector(target);
+    var text = getElementText(target);
+    var attributes = getElementAttributes(target);
+    console.log("Element clicked:", {
+      tagName: target.tagName,
+      selector: selector,
+      rect: rect
+    });
+
+    // 立即更新选中高亮
+    updateSelectedHighlight(target);
+
+    // 隐藏悬停高亮，因为现在是选中状态
+    highlightBox.style.display = "none";
+    tagLabel.style.display = "none";
+    var elementInfo = {
+      tagName: target.tagName.toLowerCase(),
+      rect: {
+        left: rect.left,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+        x: rect.x,
+        y: rect.y
+      },
+      selector: selector,
+      text: text,
+      attributes: attributes,
+      url: window.location.href,
+      path: window.location.pathname,
+      timestamp: Date.now()
+    };
+    try {
+      window.parent.postMessage({
+        type: "iframe-element-click",
+        data: elementInfo,
+        source: "iframe-highlight-injector"
+      }, "*");
+    } catch (error) {
+      console.warn("无法发送消息到父窗口:", error);
+    }
+  }
+
+  // 监听来自父窗口的消息
+  function handleParentMessage(event) {
+    console.log("Received message from parent:", event.data);
+    if (event.data.type === "iframe-highlight-toggle") {
+      var enabled = event.data.enabled;
+      console.log("Highlight toggle:", enabled);
+      if (enabled) {
+        enableHighlight();
+      } else {
+        disableHighlight();
+      }
+    } else if (event.data.type === "enable-iframe-highlight") {
+      console.log("Enable iframe highlight");
+      enableHighlight();
+    } else if (event.data.type === "disable-iframe-highlight") {
+      console.log("Disable iframe highlight");
+      disableHighlight();
+    } else if (event.data.type === "toggle-iframe-highlight") {
+      var _enabled = event.data.enabled !== undefined ? event.data.enabled : !highlightEnabled;
+      console.log("Toggle iframe highlight to:", _enabled);
+      if (_enabled) {
+        enableHighlight();
+      } else {
+        disableHighlight();
+      }
+    } else if (event.data.type === "update-selected-element") {
+      var selector = event.data.selector;
+      console.log("Update selected element with selector:", selector);
+      if (selector) {
+        try {
+          var element = document.querySelector(selector);
+          console.log("Found element by selector:", element);
+          updateSelectedHighlight(element);
+        } catch (error) {
+          console.warn("Failed to select element:", error);
+          updateSelectedHighlight(null);
+        }
+      } else {
+        updateSelectedHighlight(null);
+      }
+    } else if (event.data.type === "clear-selected-element") {
+      console.log("Clear selected element");
+      updateSelectedHighlight(null);
+    }
+  }
+
+  // 启用高亮功能
+  function enableHighlight() {
+    console.log("Enabling highlight");
+    document.addEventListener("mouseover", handleMouseOver, true);
+    document.addEventListener("mouseout", handleMouseOut, true);
+    document.addEventListener("click", handleClick, true);
+    highlightEnabled = true;
+    overlay.style.display = "block";
+  }
+
+  // 禁用高亮功能
+  function disableHighlight() {
+    console.log("Disabling highlight");
+    highlightEnabled = false;
+    // 保持事件监听器，但通过 highlightEnabled 变量控制行为
+    // 这样可以保留选中状态的显示
+    highlightBox.style.display = "none";
+    tagLabel.style.display = "none";
+    // 不隐藏 selectedBox 和 selectedLabel，保留选中状态
+  }
+
+  // 完全禁用高亮功能（移除所有监听器）
+  function fullyDisableHighlight() {
+    console.log("Fully disabling highlight");
+    highlightEnabled = false;
+    document.removeEventListener("mouseover", handleMouseOver, true);
+    document.removeEventListener("mouseout", handleMouseOut, true);
+    document.removeEventListener("click", handleClick, true);
+    overlay.style.display = "none";
+    highlightBox.style.display = "none";
+    tagLabel.style.display = "none";
+    selectedBox.style.display = "none";
+    selectedLabel.style.display = "none";
+  }
+
+  // 添加事件监听
+  enableHighlight();
+  window.addEventListener("message", handleParentMessage);
+
+  // 暴露全局函数供外部调用
+  window.__iframeHighlightControl = {
+    enable: enableHighlight,
+    disable: disableHighlight,
+    fullyDisable: fullyDisableHighlight,
+    isEnabled: function isEnabled() {
+      return highlightEnabled;
+    },
+    getSelectedElement: function getSelectedElement() {
+      return selectedElement;
+    },
+    updateSelected: updateSelectedHighlight,
+    // 通过消息发送开关控制
+    sendToggleMessage: function sendToggleMessage(enabled) {
+      window.parent.postMessage({
+        type: 'iframe-highlight-status',
+        enabled: enabled || highlightEnabled,
+        source: 'iframe-highlight-injector'
+      }, '*');
+    }
+  };
+
+  // 通知父窗口脚本已加载
+  try {
+    window.parent.postMessage({
+      type: "iframe-highlight-ready",
+      data: {
+        url: window.location.href,
+        userAgent: navigator.userAgent,
+        timestamp: Date.now()
+      },
+      source: "iframe-highlight-injector"
+    }, "*");
+  } catch (error) {
+    console.warn("无法发送就绪消息到父窗口:", error);
+  }
+
+  // 清理函数
+  window.__iframeHighlightCleanup = function () {
+    fullyDisableHighlight();
+    window.removeEventListener("message", handleParentMessage);
+    if (overlay.parentElement) {
+      overlay.parentElement.removeChild(overlay);
+    }
+    delete window.__iframeHighlightInitialized;
+    delete window.__iframeHighlightCleanup;
+  };
+})();
+
+</script>
+</body>
+</html>
