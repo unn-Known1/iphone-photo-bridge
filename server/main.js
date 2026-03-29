@@ -118,19 +118,22 @@ function handleWebDAV(req, res) {
     serverState.connections = Math.max(0, serverState.connections - 1);
   });
 
-  // Parse URL properly
-  const requestedPath = req.url;
+  // Parse URL properly - handle both / and /photos paths
+  let requestedPath = req.url;
   const backupPath = getBackupPath();
 
-  // Normalize the path - remove /photos prefix if present
+  // Normalize the path - treat both / and /photos as root
   let relativePath = requestedPath;
   if (requestedPath.startsWith('/photos')) {
     relativePath = requestedPath.replace('/photos', '') || '/';
   }
 
-  // Clean the path
-  const cleanPath = relativePath === '/' || relativePath === '' ? '' : relativePath;
-  const filePath = path.join(backupPath, cleanPath);
+  // For root paths, serve from backup directory
+  if (relativePath === '/' || relativePath === '') {
+    relativePath = '';
+  }
+
+  const filePath = path.join(backupPath, relativePath);
 
   // Ensure backup directory exists
   if (!fs.existsSync(backupPath)) {
@@ -243,9 +246,9 @@ function handlePropfind(req, res, filePath, urlPath) {
   const stat = fs.statSync(filePath);
   const responses = [];
 
-  // Root response
+  // Root response - always use / for iPhone compatibility
   const href = normalizedPath === '/' ? '/' : normalizedPath;
-  responses.push(createResponse(href, stat, urlPath.startsWith('/photos') ? '/photos' : ''));
+  responses.push(createResponse(href, stat, ''));
 
   // List contents if directory and depth != 0
   if (stat.isDirectory() && depth !== '0') {
