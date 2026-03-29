@@ -1,19 +1,20 @@
 # iPhone Photo Bridge
 
-Direct iPhone to Linux photo backup via WebDAV - supports all iPhone formats with full metadata preservation.
+Direct iPhone to Linux photo backup via WebDAV with HTTPS support - compatible with all iPhone formats and full metadata preservation.
 
 ![iPhone Photo Bridge](https://img.shields.io/badge/Platform-Linux-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 ## Features
 
-- **WebDAV Server** - Native WebDAV server compatible with iPhone Files app
+- **HTTPS WebDAV Server** - iOS 13+ requires HTTPS for Files app connection
 - **All Formats Supported** - HEIC, HEIF, JPEG, PNG, RAW/DNG, ProRAW, Live Photos
 - **Metadata Preservation** - EXIF data, GPS coordinates, dates, camera info kept intact
 - **Local Network Only** - Your photos never leave your network
 - **Auto-Organization** - Automatic date-based folder structure
 - **Real-time Dashboard** - Monitor uploads, connections, and storage
 - **QR Code Connection** - Easy iPhone connection via QR code
+- **Auto-Generated SSL** - Self-signed certificates for HTTPS (iOS compatible)
 
 ## Requirements
 
@@ -35,41 +36,65 @@ npm install
 npm start
 ```
 
-## Usage
+## Quick Start (iOS Files App)
 
-### 1. Start the Server
+### Step 1: Start the Server
 
 ```bash
 npm start
 ```
 
-The server will start on port 3000 and display:
-- Server URL (e.g., `http://192.168.1.100:3000`)
-- Instructions for connecting
+The server will display:
+```
+Web Interface:  http://192.168.1.100:3000
+WebDAV URL:     https://192.168.1.100:8080
+```
 
-### 2. Connect iPhone
+### Step 2: Trust the SSL Certificate on iPhone
+
+1. Open **Safari** on your iPhone
+2. Go to: `https://YOUR_IP:3000` (replace with your actual IP)
+3. Tap **Download Certificate**
+4. Go to **Settings** > **General** > **VPN & Device Management**
+5. Tap the certificate profile and tap **Install**
+6. Enter your passcode and tap **Install** again
+7. Go to **Settings** > **General** > **About** > **Certificate Trust Settings**
+8. Enable full trust for the certificate
+
+### Step 3: Connect via Files App
 
 1. Open the **Files** app on your iPhone
-2. Tap **"..."** or **"+"** button
-3. Select **"Connect to Server"**
-4. Enter the server URL shown in the terminal
-5. Navigate to the Photos folder
+2. Tap **...** (or **+** button)
+3. Select **Connect to Server**
+4. Enter: `https://YOUR_IP:8080` (e.g., `https://192.168.1.100:8080`)
+5. Tap **Next** and accept the certificate if prompted
+6. You should see the connected server
 
-### 3. Backup Photos
+### Step 4: Backup Photos
 
-- Select photos in the Files app
+- Navigate to your photos in the Files app
+- Select photos you want to backup
 - Tap **Copy** or **Move**
-- Navigate to the iPhone Photo Bridge server location
+- Navigate to the connected iPhone Photo Bridge server
 - Paste to upload
+
+## Web Interface
+
+Open `http://YOUR_IP:3000` in a browser to access:
+- Server control panel with start/stop buttons
+- Real-time upload monitoring
+- Photo gallery view
+- QR code for easy URL sharing
+- Certificate download for iPhone setup
 
 ## Configuration
 
-Edit `package.json` or create environment variables:
+### Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | 3000 | Server port |
-| `BACKUP_PATH` | `~/iPhonePhotoBridge/Backups` | Backup location |
+| `PORT` | 3000 | Web interface port |
+| `BACKUP_PATH` | `~/iPhonePhotoBridge/Backups` | Backup storage location |
 
 ### Example:
 
@@ -77,25 +102,16 @@ Edit `package.json` or create environment variables:
 PORT=8080 BACKUP_PATH=/media/photos npm start
 ```
 
-## Web Interface
-
-Open the server URL in a browser to access:
-- Server control panel
-- Real-time upload queue
-- Photo gallery view
-- Settings configuration
-
 ## Project Structure
 
 ```
 iphone-photo-bridge/
 ├── server/
-│   ├── main.js       # Main server with WebDAV + API
-│   └── webdav.js     # WebDAV protocol handler
+│   └── main.js       # WebDAV + HTTPS server with API
 ├── public/
-│   └── index.html    # Web interface
+│   └── index.html    # Web dashboard interface
 ├── package.json
-└── SPEC.md          # Detailed specification
+└── README.md
 ```
 
 ## Supported Formats
@@ -108,12 +124,40 @@ iphone-photo-bridge/
 | RAW/DNG | .dng, .raw | Full |
 | ProRAW | .dng | Full |
 | Live Photos | .mov + .jpg | Bundled |
+| Video | .mov, .mp4 | Full |
+
+## How It Works
+
+1. **Server**: Node.js runs a WebDAV server with HTTPS support
+2. **Certificate**: Auto-generates self-signed SSL certificate
+3. **Connection**: iPhone connects via Files app using WebDAV protocol
+4. **Transfer**: Photos are transferred over local network
+5. **Storage**: Files saved to `~/iPhonePhotoBridge/Backups`
+6. **Metadata**: JSON files created for each photo with full metadata
 
 ## Security
 
-- Local network only - no cloud exposure
-- Optional Basic Auth available
-- No data leaves your network
+- **Local network only** - No cloud exposure
+- **Self-signed HTTPS** - Required for iOS Files app
+- **No internet required** - Works completely offline
+- **Certificate-based** - Secure local transfer
+
+## Troubleshooting
+
+### "URL is not supported" Error
+- Make sure you're using `https://` not `http://`
+- Ensure the SSL certificate is trusted on your iPhone
+- Check that you're entering the correct IP address
+
+### Certificate Not Trusted
+- Download the certificate from the web interface
+- Install it in Settings > General > VPN & Device Management
+- Enable full trust in Settings > General > About > Certificate Trust Settings
+
+### Connection Refused
+- Check if the server is running (look at the terminal)
+- Ensure your firewall allows connections on port 8080
+- Verify the IP address is correct
 
 ## License
 
