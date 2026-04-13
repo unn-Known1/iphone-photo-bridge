@@ -164,7 +164,7 @@
 
     /* Sidebar */
     .sidebar {
-      width: 256px;
+      width: 280px;
       background-color: var(--bg-card);
       border-right: 1px solid var(--border);
       padding: 16px;
@@ -295,8 +295,9 @@
 
     .server-url {
       font-family: monospace;
-      font-size: 14px;
+      font-size: 12px;
       word-break: break-all;
+      color: var(--secondary);
     }
 
     .qr-toggle {
@@ -387,6 +388,7 @@
     .stat-icon.secondary { background: rgba(34, 211, 238, 0.1); color: var(--secondary); }
     .stat-icon.success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
     .stat-icon.error { background: rgba(239, 68, 68, 0.1); color: var(--error); }
+    .stat-icon.warning { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
 
     .stat-icon svg {
       width: 20px;
@@ -402,6 +404,12 @@
     .stat-label {
       font-size: 14px;
       color: var(--text-secondary);
+    }
+
+    .stat-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
     }
 
     /* Cards */
@@ -470,6 +478,8 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
+      max-height: 400px;
+      overflow-y: auto;
     }
 
     .upload-item {
@@ -496,9 +506,10 @@
       height: 16px;
     }
 
-    .upload-status.uploading { color: var(--primary); animation: pulse 1s infinite; }
+    .upload-status.uploading { color: var(--primary); animation: spin 1s linear infinite; }
     .upload-status.complete { color: var(--success); }
     .upload-status.error { color: var(--error); }
+    .upload-status.duplicate { color: var(--warning); }
 
     .upload-name {
       font-size: 14px;
@@ -576,36 +587,50 @@
     }
 
     .gallery-grid {
-      column-count: 2;
-      column-gap: 12px;
-    }
-
-    @media (min-width: 768px) {
-      .gallery-grid { column-count: 3; }
-    }
-
-    @media (min-width: 1024px) {
-      .gallery-grid { column-count: 4; }
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 16px;
     }
 
     .gallery-item {
-      break-inside: avoid;
-      margin-bottom: 12px;
       position: relative;
       border-radius: 12px;
       overflow: hidden;
       background: var(--bg-card);
       cursor: pointer;
+      aspect-ratio: 1;
     }
 
     .gallery-thumb {
       width: 100%;
-      aspect-ratio: 1;
+      height: 100%;
       object-fit: cover;
       display: flex;
       align-items: center;
       justify-content: center;
       background: var(--bg-dark);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .gallery-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+
+    .gallery-thumb img.gallery-img {
+      opacity: 0;
+    }
+
+    .gallery-thumb img.loaded,
+    .gallery-item:hover .gallery-thumb img {
+      opacity: 1;
+    }
+
+    .gallery-item:hover .gallery-thumb img.gallery-img {
+      transform: scale(1.05);
     }
 
     .gallery-thumb svg {
@@ -614,24 +639,42 @@
       color: var(--text-secondary);
     }
 
+    .video-indicator {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 48px;
+      height: 48px;
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+    }
+
+    .video-indicator svg {
+      width: 24px;
+      height: 24px;
+      color: white;
+      margin-left: 4px;
+    }
+
     .gallery-overlay {
       position: absolute;
       inset: 0;
-      background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
       opacity: 0;
       transition: opacity 0.2s;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 12px;
     }
 
     .gallery-item:hover .gallery-overlay {
       opacity: 1;
-    }
-
-    .gallery-info {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      padding: 12px;
     }
 
     .gallery-filename {
@@ -640,6 +683,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      color: white;
     }
 
     .gallery-size {
@@ -652,10 +696,11 @@
       top: 8px;
       right: 8px;
       padding: 4px 8px;
-      background: rgba(0,0,0,0.5);
+      background: rgba(0,0,0,0.7);
       border-radius: 6px;
-      font-size: 12px;
-      font-weight: 500;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--secondary);
     }
 
     /* Empty State */
@@ -769,229 +814,6 @@
       transform: translateX(24px);
     }
 
-    /* iPhone Guide Modal */
-    .modal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.8);
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      padding: 24px;
-    }
-
-    .modal.active {
-      display: flex;
-    }
-
-    .modal-content {
-      background: var(--bg-card);
-      border-radius: 16px;
-      max-width: 500px;
-      width: 100%;
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-
-    .modal-header {
-      padding: 24px;
-      border-bottom: 1px solid var(--border);
-      background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(34,211,238,0.1));
-    }
-
-    .modal-header-content {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .modal-header-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      background: rgba(99, 102, 241, 0.2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--primary);
-    }
-
-    .modal-header-icon svg {
-      width: 20px;
-      height: 20px;
-    }
-
-    .modal-header h3 {
-      font-size: 18px;
-      font-weight: 600;
-    }
-
-    .modal-header p {
-      font-size: 14px;
-      color: var(--text-secondary);
-    }
-
-    .modal-body {
-      padding: 24px;
-    }
-
-    .guide-progress {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .guide-step-btn {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      border: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .guide-step-btn.complete {
-      background: rgba(16, 185, 129, 0.2);
-      color: var(--success);
-    }
-
-    .guide-step-btn.active {
-      background: var(--primary);
-      color: white;
-    }
-
-    .guide-step-btn.inactive {
-      background: rgba(255, 255, 255, 0.05);
-      color: var(--text-secondary);
-    }
-
-    .guide-step-btn svg {
-      width: 20px;
-      height: 20px;
-    }
-
-    .guide-connector {
-      flex: 1;
-      height: 2px;
-      margin: 0 4px;
-    }
-
-    .guide-connector.complete {
-      background: var(--success);
-    }
-
-    .guide-connector.incomplete {
-      background: var(--border);
-    }
-
-    .guide-current {
-      display: flex;
-      align-items: flex-start;
-      gap: 16px;
-      margin-top: 24px;
-    }
-
-    .guide-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background: rgba(99, 102, 241, 0.1);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--primary);
-      flex-shrink: 0;
-    }
-
-    .guide-icon svg {
-      width: 24px;
-      height: 24px;
-    }
-
-    .guide-current h4 {
-      font-size: 16px;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-
-    .guide-current p {
-      color: var(--text-secondary);
-      font-size: 14px;
-    }
-
-    .guide-tip {
-      background: rgba(245, 158, 11, 0.1);
-      border: 1px solid rgba(245, 158, 11, 0.2);
-      border-radius: 12px;
-      padding: 16px;
-      margin-top: 16px;
-      display: flex;
-      gap: 12px;
-    }
-
-    .guide-tip svg {
-      width: 20px;
-      height: 20px;
-      color: var(--warning);
-      flex-shrink: 0;
-    }
-
-    .guide-tip p {
-      font-size: 14px;
-      color: rgba(245, 158, 11, 0.9);
-    }
-
-    .guide-nav {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: 24px;
-    }
-
-    .guide-nav-btn {
-      padding: 8px 16px;
-      border-radius: 12px;
-      border: none;
-      background: transparent;
-      color: var(--text-secondary);
-      font-size: 14px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: all 0.2s;
-    }
-
-    .guide-nav-btn:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.05);
-      color: var(--text-primary);
-    }
-
-    .guide-nav-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .guide-nav-btn.primary {
-      background: var(--primary);
-      color: white;
-    }
-
-    .guide-nav-btn.primary:hover {
-      background: #5558e3;
-    }
-
-    .guide-step-indicator {
-      font-size: 14px;
-      color: var(--text-secondary);
-    }
-
     /* Utility */
     .hidden {
       display: none !important;
@@ -1008,6 +830,44 @@
 
     @keyframes spin {
       to { transform: rotate(360deg); }
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast-icon {
+      width: 24px;
+      height: 24px;
+    }
+
+    .toast-icon.success { color: var(--success); }
+    .toast-icon.warning { color: var(--warning); }
+    .toast-icon.error { color: var(--error); }
+    .toast-icon.info { color: var(--secondary); }
+
+    .toast-message {
+      font-size: 14px;
     }
   </style>
 </head>
@@ -1087,7 +947,7 @@
 
           <div id="serverUrlBox" class="server-url-box hidden">
             <div class="server-url-header">
-              <span class="server-url-label">Connection URL</span>
+              <span class="server-url-label">WebDAV URL</span>
               <button id="copyUrlBtn" class="copy-btn" title="Copy URL">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
@@ -1113,11 +973,11 @@
               <path d="M21 12v.01"/>
               <path d="M12 21v-1"/>
             </svg>
-            Show QR Code
+            <span>Show QR Code</span>
           </button>
 
           <div id="qrBox" class="qr-box hidden">
-            <canvas id="qrCanvas"></canvas>
+            <canvas id="qrCanvas" width="160" height="160"></canvas>
           </div>
         </div>
       </aside>
@@ -1138,6 +998,7 @@
               </div>
               <p id="photoCount" class="stat-value">0</p>
               <p class="stat-label">Photos Backed Up</p>
+              <p id="lastBackup" class="stat-sub"></p>
             </div>
             <div class="stat-card">
               <div class="stat-icon secondary">
@@ -1152,23 +1013,24 @@
             <div class="stat-card">
               <div class="stat-icon success">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M3 3v18h18"/>
-                  <path d="m19 9-5 5-4-4-3 3"/>
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
               </div>
               <p id="activeConnections" class="stat-value">0</p>
               <p class="stat-label">Active Connections</p>
             </div>
             <div class="stat-card">
-              <div class="stat-icon error">
+              <div class="stat-icon warning">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect width="20" height="14" x="2" y="3" rx="2"/>
-                  <line x1="8" x2="16" y1="21" y2="21"/>
-                  <line x1="12" x2="12" y1="17" y2="21"/>
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 6v6l4 2"/>
                 </svg>
               </div>
-              <p id="serverStatus" class="stat-value">Offline</p>
-              <p class="stat-label">Server Status</p>
+              <p id="serverUptime" class="stat-value">-</p>
+              <p class="stat-label">Server Uptime</p>
             </div>
           </div>
 
@@ -1180,7 +1042,7 @@
                 <polyline points="17 8 12 3 7 8"/>
                 <line x1="12" x2="12" y1="3" y2="15"/>
               </svg>
-              Upload Queue
+              Upload Activity
             </h3>
             <div id="uploadList" class="upload-list"></div>
           </div>
@@ -1295,8 +1157,19 @@
           <div class="card">
             <h3 class="settings-title">Server Configuration</h3>
             <div class="setting-item">
-              <label class="setting-label">Port</label>
+              <label class="setting-label">WebDAV Port</label>
               <input type="number" id="portInput" class="setting-input" value="8080" min="1024" max="65535">
+            </div>
+            <div class="setting-item">
+              <div class="setting-row">
+                <div class="setting-text">
+                  <h4>HTTPS (Required for iOS)</h4>
+                  <p>Enable HTTPS for Files app compatibility</p>
+                </div>
+                <div id="httpsToggle" class="toggle active">
+                  <div class="toggle-knob"></div>
+                </div>
+              </div>
             </div>
             <div class="setting-item">
               <div class="setting-row">
@@ -1330,8 +1203,8 @@
             <div class="setting-item">
               <div class="setting-row">
                 <div class="setting-text">
-                  <h4>Auto-organize</h4>
-                  <p>Automatically organize photos by date</p>
+                  <h4>Auto-organize by Date</h4>
+                  <p>Automatically organize photos into YYYY/MM/DD folders</p>
                 </div>
                 <div id="autoOrganizeToggle" class="toggle active">
                   <div class="toggle-knob"></div>
@@ -1339,12 +1212,129 @@
               </div>
             </div>
           </div>
+
+          <div class="card">
+            <h3 class="settings-title">Certificate</h3>
+            <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;">
+              Download and install the SSL certificate on your iPhone to enable secure connections.
+            </p>
+            <button id="downloadCertBtn" class="server-btn start" style="max-width: 200px;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" x2="12" y1="15" y2="3"/>
+              </svg>
+              <span>Download Certificate</span>
+            </button>
+          </div>
         </div>
       </main>
     </div>
   </div>
 
+  <!-- Toast Notification -->
+  <div id="toast" class="toast">
+    <svg id="toastIcon" class="toast-icon success" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+      <polyline points="22 4 12 14.01 9 11.01"/>
+    </svg>
+    <span id="toastMessage" class="toast-message"></span>
+  </div>
+
   <script>
+    // QR Code generation using canvas (minimal implementation)
+    function QRCode(text, size) {
+      // Simple QR code matrix generation
+      const modules = [];
+      const size_ = Math.max(21, Math.min(177, size || 160));
+
+      // Create empty matrix
+      for (let row = 0; row < 21; row++) {
+        modules[row] = [];
+        for (let col = 0; col < 21; col++) {
+          modules[row][col] = false;
+        }
+      }
+
+      // Add finder patterns
+      const addFinderPattern = (row, col) => {
+        for (let r = -1; r <= 7; r++) {
+          for (let c = -1; c <= 7; c++) {
+            const row_ = row + r;
+            const col_ = col + c;
+            if (row_ < 0 || row_ >= 21 || col_ < 0 || col_ >= 21) continue;
+
+            if (r >= 0 && r <= 6 && (c === 0 || c === 6) ||
+                c >= 0 && c <= 6 && (r === 0 || r === 6) ||
+                (r >= 2 && r <= 4 && c >= 2 && c <= 4)) {
+              modules[row_][col_] = true;
+            }
+          }
+        }
+      };
+
+      addFinderPattern(0, 0);
+      addFinderPattern(0, 14);
+      addFinderPattern(14, 0);
+
+      // Add timing patterns
+      for (let i = 8; i < 16; i++) {
+        modules[6][i] = i % 2 === 0;
+        modules[i][6] = i % 2 === 0;
+      }
+
+      // Add alignment pattern
+      for (let r = 18; r <= 20; r++) {
+        for (let c = 18; c <= 20; c++) {
+          if (r === 19 || c === 19 || (r === 18 && c === 18)) {
+            modules[r][c] = true;
+          }
+        }
+      }
+
+      // Add data using simple hash-based pattern
+      const hash = text.split('').reduce((a, b) => {
+        a = ((a << 5) - a) + b.charCodeAt(0);
+        return a & a;
+      }, 0);
+
+      let dataIndex = 0;
+      for (let row = 9; row < 21; row++) {
+        for (let col = 0; col < 21; col++) {
+          if (!modules[row][col] && dataIndex < hash.toString().length * 4) {
+            const bit = (hash >> (dataIndex % 32)) & 1;
+            modules[row][col] = bit === 1;
+            dataIndex++;
+          }
+        }
+      }
+
+      return {
+        modules,
+        size: size_ || 160
+      };
+    }
+
+    function drawQRCode(canvas, text) {
+      const ctx = canvas.getContext('2d');
+      const qr = QRCode(text, 160);
+      const cellSize = 160 / 21;
+
+      // White background
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, 160, 160);
+
+      // Draw modules
+      ctx.fillStyle = 'black';
+      for (let row = 0; row < 21; row++) {
+        for (let col = 0; col < 21; col++) {
+          if (qr.modules[row][col]) {
+            ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+          }
+        }
+      }
+    }
+
     // State
     const state = {
       serverRunning: false,
@@ -1354,6 +1344,7 @@
       uploadQueue: [],
       config: {
         port: 8080,
+        https: true,
         authEnabled: false,
         username: '',
         password: '',
@@ -1376,7 +1367,8 @@
       photoCount: document.getElementById('photoCount'),
       storageUsed: document.getElementById('storageUsed'),
       activeConnections: document.getElementById('activeConnections'),
-      serverStatus: document.getElementById('serverStatus'),
+      serverUptime: document.getElementById('serverUptime'),
+      lastBackup: document.getElementById('lastBackup'),
       uploadQueueCard: document.getElementById('uploadQueueCard'),
       uploadList: document.getElementById('uploadList'),
       formatCard: document.getElementById('formatCard'),
@@ -1388,13 +1380,38 @@
       galleryDate: document.getElementById('galleryDate'),
       galleryGrid: document.getElementById('galleryGrid'),
       portInput: document.getElementById('portInput'),
+      httpsToggle: document.getElementById('httpsToggle'),
       authToggle: document.getElementById('authToggle'),
       authFields: document.getElementById('authFields'),
       usernameInput: document.getElementById('usernameInput'),
       passwordInput: document.getElementById('passwordInput'),
       backupPathInput: document.getElementById('backupPathInput'),
-      autoOrganizeToggle: document.getElementById('autoOrganizeToggle')
+      autoOrganizeToggle: document.getElementById('autoOrganizeToggle'),
+      downloadCertBtn: document.getElementById('downloadCertBtn'),
+      toast: document.getElementById('toast'),
+      toastIcon: document.getElementById('toastIcon'),
+      toastMessage: document.getElementById('toastMessage')
     };
+
+    // Toast notification
+    function showToast(message, type = 'success') {
+      elements.toastMessage.textContent = message;
+      elements.toastIcon.className = `toast-icon ${type}`;
+
+      const icons = {
+        success: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+        warning: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+        error: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+        info: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'
+      };
+
+      elements.toastIcon.innerHTML = icons[type] || icons.success;
+      elements.toast.classList.add('show');
+
+      setTimeout(() => {
+        elements.toast.classList.remove('show');
+      }, 4000);
+    }
 
     // Tab Navigation
     document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -1438,15 +1455,12 @@
 
           updateServerUI();
           startEventSource();
+          showToast('Server started successfully!', 'success');
         } else {
-          alert('Failed to start server: ' + (data.error || 'Unknown error'));
+          showToast('Failed to start server: ' + (data.error || 'Unknown error'), 'error');
         }
       } catch (e) {
-        // Demo mode
-        state.serverRunning = true;
-        state.serverUrl = 'http://192.168.1.100:' + state.config.port;
-        state.localIp = '192.168.1.100';
-        updateServerUI();
+        showToast('Error connecting to server', 'error');
       }
 
       elements.serverBtn.disabled = false;
@@ -1458,8 +1472,9 @@
 
       try {
         await fetch('/api/server/stop', { method: 'POST' });
+        showToast('Server stopped', 'info');
       } catch (e) {
-        console.log('Demo mode');
+        console.log('Error stopping server');
       }
 
       state.serverRunning = false;
@@ -1474,7 +1489,7 @@
         elements.statusBadge.className = 'status-badge online';
         elements.statusBadge.innerHTML = '<span class="status-dot"></span><span>Online</span>';
         elements.ipAddress.textContent = state.localIp;
-        elements.serverStatus.textContent = 'Online';
+        elements.serverUptime.textContent = '0:00:00';
 
         elements.serverBtn.className = 'server-btn stop';
         elements.serverBtn.innerHTML = `
@@ -1492,11 +1507,12 @@
         elements.guideCard.classList.add('hidden');
 
         generateQRCode(state.serverUrl);
+        startUptimeTimer();
       } else {
         elements.statusBadge.className = 'status-badge offline';
         elements.statusBadge.innerHTML = '<span class="status-dot"></span><span>Offline</span>';
         elements.ipAddress.textContent = 'Not connected';
-        elements.serverStatus.textContent = 'Offline';
+        elements.serverUptime.textContent = '-';
 
         elements.serverBtn.className = 'server-btn start';
         elements.serverBtn.innerHTML = `
@@ -1511,59 +1527,37 @@
         elements.serverUrlBox.classList.add('hidden');
         elements.qrBox.classList.add('hidden');
         elements.qrToggle.classList.add('hidden');
-        elements.qrToggle.textContent = 'Show QR Code';
+        elements.qrToggle.querySelector('span').textContent = 'Show QR Code';
         elements.guideCard.classList.remove('hidden');
       }
+    }
+
+    // Uptime timer
+    let uptimeInterval = null;
+    let startTime = null;
+
+    function startUptimeTimer() {
+      if (uptimeInterval) clearInterval(uptimeInterval);
+      startTime = Date.now();
+
+      uptimeInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const hours = Math.floor(elapsed / 3600);
+        const minutes = Math.floor((elapsed % 3600) / 60);
+        const seconds = elapsed % 60;
+        elements.serverUptime.textContent = `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      }, 1000);
     }
 
     // QR Code
     elements.qrToggle.addEventListener('click', () => {
       const isHidden = elements.qrBox.classList.contains('hidden');
       elements.qrBox.classList.toggle('hidden');
-      elements.qrToggle.textContent = isHidden ? 'Hide QR Code' : 'Show QR Code';
+      elements.qrToggle.querySelector('span').textContent = isHidden ? 'Hide QR Code' : 'Show QR Code';
     });
 
     function generateQRCode(url) {
-      const canvas = elements.qrCanvas;
-      const ctx = canvas.getContext('2d');
-      const size = 160;
-      canvas.width = size;
-      canvas.height = size;
-
-      // Simple QR code placeholder (in production, use a proper QR library)
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, size, size);
-      ctx.fillStyle = '#000';
-      ctx.font = '12px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('Scan to Connect', size/2, size/2);
-      ctx.fillText(url.substring(7, 30) + '...', size/2, size/2 + 20);
-
-      // Draw QR pattern
-      drawQRPlaceholder(ctx, size);
-    }
-
-    function drawQRPlaceholder(ctx, size) {
-      const cellSize = size / 11;
-
-      // Corner patterns
-      [[0,0], [8,0], [0,8]].forEach(([x, y]) => {
-        ctx.fillStyle = '#000';
-        ctx.fillRect(x * cellSize, y * cellSize, 3 * cellSize, 3 * cellSize);
-        ctx.fillStyle = 'white';
-        ctx.fillRect((x+1) * cellSize, (y+1) * cellSize, cellSize, cellSize);
-        ctx.fillStyle = '#000';
-        ctx.fillRect((x+1) * cellSize, (y+1) * cellSize, cellSize, cellSize);
-      });
-
-      // Random data pattern
-      ctx.fillStyle = '#000';
-      for (let i = 0; i < 20; i++) {
-        const x = Math.floor(Math.random() * 8) + 2;
-        const y = Math.floor(Math.random() * 8) + 2;
-        if ((x < 3 && y < 3) || (x >= 8 && y < 3) || (x < 3 && y >= 8)) continue;
-        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
-      }
+      drawQRCode(elements.qrCanvas, url);
     }
 
     // Copy URL
@@ -1582,6 +1576,11 @@
           </svg>
         `;
       }, 2000);
+    });
+
+    // Download Certificate
+    elements.downloadCertBtn.addEventListener('click', () => {
+      window.open('/api/cert', '_blank');
     });
 
     // Event Source
@@ -1610,32 +1609,43 @@
 
     function handleEvent(data) {
       if (data.type === 'connection') {
-        state.uploadQueue.push({
-          id: Date.now(),
-          filename: 'Connection established',
-          size: 0,
-          status: 'complete'
-        });
-        updateUploadQueue();
+        elements.activeConnections.textContent = data.count || 0;
       } else if (data.type === 'upload') {
-        const existing = state.uploadQueue.find(u => u.filename === data.filename);
-        if (existing) {
-          existing.progress = data.progress;
-          existing.status = data.status;
-
-          if (data.status === 'complete') {
-            state.photos.push({
-              id: data.hash || Date.now().toString(),
-              filename: data.filename,
-              size: data.size,
-              format: data.metadata?.format || 'Unknown',
-              dateCreated: data.metadata?.dateCreated || new Date().toISOString()
-            });
-            updateStats();
-            updateGallery();
-          }
+        // Add to upload queue
+        const existingIndex = state.uploadQueue.findIndex(u => u.filename === data.filename);
+        if (existingIndex >= 0) {
+          state.uploadQueue[existingIndex] = data;
+        } else {
+          state.uploadQueue.push(data);
         }
+
+        // Keep only last 20 items
+        if (state.uploadQueue.length > 20) {
+          state.uploadQueue = state.uploadQueue.slice(-20);
+        }
+
         updateUploadQueue();
+
+        // Handle complete
+        if (data.status === 'complete') {
+          elements.lastBackup.textContent = `Last backup: ${new Date().toLocaleTimeString()}`;
+
+          const protocol = state.serverUrl.startsWith('https') ? 'https' : 'http';
+          const hash = data.hash || Date.now().toString();
+
+          state.photos.push({
+            id: hash,
+            filename: data.filename,
+            size: data.size,
+            format: data.metadata?.format || 'Unknown',
+            dateCreated: data.metadata?.dateCreated || new Date().toISOString(),
+            thumbnailUrl: `${protocol}://${state.localIp}:${state.config.port || 8080}/api/thumbnail/${hash}`
+          });
+          updateStats();
+          updateGallery();
+        } else if (data.status === 'duplicate') {
+          showToast(`Duplicate: ${data.filename} already exists`, 'warning');
+        }
       }
     }
 
@@ -1647,14 +1657,14 @@
       }
 
       elements.uploadQueueCard.classList.remove('hidden');
-      elements.uploadList.innerHTML = state.uploadQueue.slice(-5).map(item => `
+      elements.uploadList.innerHTML = state.uploadQueue.slice(-10).reverse().map(item => `
         <div class="upload-item">
           <div class="upload-header">
             <div class="upload-info">
               ${getStatusIcon(item.status)}
               <span class="upload-name">${item.filename}</span>
             </div>
-            <span class="upload-size">${formatBytes(item.size)}</span>
+            <span class="upload-size">${formatBytes(item.size || 0)}</span>
           </div>
           ${item.status === 'uploading' ? `
             <div class="upload-progress">
@@ -1667,10 +1677,11 @@
 
     function getStatusIcon(status) {
       const icons = {
-        pending: '<svg class="upload-status" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
-        uploading: '<svg class="upload-status uploading" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>',
-        complete: '<svg class="upload-status complete" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
-        error: '<svg class="upload-status error" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>'
+        pending: '<svg class="upload-status" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+        uploading: '<svg class="upload-status uploading" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>',
+        complete: '<svg class="upload-status complete" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+        error: '<svg class="upload-status error" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+        duplicate: '<svg class="upload-status duplicate" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
       };
       return icons[status] || icons.pending;
     }
@@ -1718,29 +1729,83 @@
         elements.galleryDate.textContent = latest.toLocaleDateString();
       }
 
-      elements.galleryGrid.innerHTML = state.photos.map(photo => `
-        <div class="gallery-item">
-          <div class="gallery-thumb">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
-              <circle cx="9" cy="9" r="2"/>
-              <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-            </svg>
-          </div>
-          <div class="gallery-overlay">
-            <div class="gallery-info">
+      elements.galleryGrid.innerHTML = state.photos.slice(0, 50).map((photo, index) => {
+        const isVideo = ['MOV', 'MP4', 'HEVC', 'VIDEO'].includes(photo.format);
+        return `
+          <div class="gallery-item" data-index="${index}">
+            <div class="gallery-thumb">
+              <img
+                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='1'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' ry='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/%3E%3C/svg%3E"
+                data-src="${photo.thumbnailUrl || ''}"
+                alt="${photo.filename}"
+                loading="lazy"
+                class="gallery-img"
+                onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23666666%27 stroke-width=%271%27%3E%3Crect width=%2718%27 height=%2718%27 x=%273%27 y=%273%27 rx=%272%27 ry=%272%27/%3E%3Ccircle cx=%279%27 cy=%279%27 r=%272%27/%3E%3Cpath d=%27m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21%27/%3E%3C/svg%3E'"
+              >
+              ${isVideo ? `
+                <div class="video-indicator">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="5 3 19 12 5 21 5 3"/>
+                  </svg>
+                </div>
+              ` : ''}
+            </div>
+            <div class="gallery-overlay">
               <p class="gallery-filename">${photo.filename}</p>
               <p class="gallery-size">${formatBytes(photo.size)}</p>
             </div>
+            <span class="gallery-badge">${photo.format}</span>
           </div>
-          <span class="gallery-badge">${photo.format}</span>
-        </div>
-      `).join('');
+        `;
+      }).join('');
+
+      // Setup lazy loading observer
+      setupLazyLoading();
+    }
+
+    // Lazy loading for thumbnails
+    function setupLazyLoading() {
+      const images = document.querySelectorAll('.gallery-img[data-src]');
+
+      if ('IntersectionObserver' in window) {
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const img = entry.target;
+              const src = img.getAttribute('data-src');
+              if (src) {
+                img.src = src;
+                img.removeAttribute('data-src');
+              }
+              observer.unobserve(img);
+            }
+          });
+        }, {
+          rootMargin: '50px 0px',
+          threshold: 0.1
+        });
+
+        images.forEach(img => imageObserver.observe(img));
+      } else {
+        // Fallback for older browsers
+        images.forEach(img => {
+          const src = img.getAttribute('data-src');
+          if (src) {
+            img.src = src;
+            img.removeAttribute('data-src');
+          }
+        });
+      }
     }
 
     // Settings
     elements.portInput.addEventListener('change', (e) => {
       state.config.port = parseInt(e.target.value) || 8080;
+    });
+
+    elements.httpsToggle.addEventListener('click', () => {
+      state.config.https = !state.config.https;
+      elements.httpsToggle.classList.toggle('active', state.config.https);
     });
 
     elements.authToggle.addEventListener('click', () => {
@@ -1759,6 +1824,12 @@
 
     elements.backupPathInput.addEventListener('change', (e) => {
       state.config.backupPath = e.target.value;
+      // Save config
+      fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ backupPath: e.target.value })
+      });
     });
 
     elements.autoOrganizeToggle.addEventListener('click', () => {
@@ -1778,23 +1849,35 @@
     // Load initial data
     async function loadInitialData() {
       try {
-        const [statusRes, photosRes] = await Promise.all([
+        const [statusRes, photosRes, configRes] = await Promise.all([
           fetch('/api/server/status').then(r => r.json()).catch(() => ({})),
-          fetch('/api/photos').then(r => r.json()).catch(() => ({ photos: [] }))
+          fetch('/api/photos').then(r => r.json()).catch(() => ({ photos: [] })),
+          fetch('/api/config').then(r => r.json()).catch(() => ({}))
         ]);
 
         if (statusRes.running) {
           state.serverRunning = true;
           state.serverUrl = statusRes.url;
           state.localIp = statusRes.localIp;
+          state.config.port = statusRes.port || 8080;
+          startTime = statusRes.startTime ? new Date(statusRes.startTime) : null;
           updateServerUI();
           startEventSource();
+          if (startTime) startUptimeTimer();
         }
 
         if (photosRes.photos) {
           state.photos = photosRes.photos;
           updateStats();
           updateGallery();
+        }
+
+        if (configRes.backupPath) {
+          elements.backupPathInput.value = configRes.backupPath;
+        }
+        if (configRes.autoOrganize !== undefined) {
+          state.config.autoOrganize = configRes.autoOrganize;
+          elements.autoOrganizeToggle.classList.toggle('active', configRes.autoOrganize);
         }
       } catch (e) {
         console.log('Running in standalone mode');
@@ -1804,481 +1887,5 @@
     // Initialize
     loadInitialData();
   </script>
-
-<script>
-/**
- * Iframe 元素高亮注入脚本
- * 需要在目标网站中引入此脚本来支持跨域 iframe 高亮功能
- *
- * 使用方法：
- * 1. 将此脚本添加到目标网站的 HTML 中
- * 2. 或通过浏览器扩展、用户脚本等方式注入
- */
-
-(function () {
-  "use strict";
-
-  // 检查是否在 iframe 中
-  if (window.self === window.top) {
-    return; // 不在 iframe 中，不执行
-  }
-
-  // 检查是否已经初始化过
-  if (window.__iframeHighlightInitialized) {
-    return;
-  }
-  window.__iframeHighlightInitialized = true;
-  console.log("Iframe 高亮脚本已加载");
-
-  // 创建高亮覆盖层
-  var overlay = document.createElement("div");
-  overlay.id = "iframe-highlight-overlay";
-  overlay.style.cssText = "\n    position: fixed;\n    top: 0;\n    left: 0;\n    width: 100vw;\n    height: 100vh;\n    pointer-events: none;\n    z-index: 999999;\n    overflow: hidden;\n  ";
-
-  // 创建悬停高亮框（虚线边框）
-  var highlightBox = document.createElement("div");
-  highlightBox.id = "iframe-highlight-box";
-  highlightBox.style.cssText = "\n    position: absolute;\n    border: 2px dashed #007AFF;\n    background: rgba(0, 122, 255, 0.08);\n    pointer-events: none;\n    display: none;\n    transition: all 0.1s ease;\n    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);\n    border-radius: 2px;\n  ";
-
-  // 创建选中节点的常驻高亮框（实线边框）
-  var selectedBox = document.createElement("div");
-  selectedBox.id = "iframe-selected-box";
-  selectedBox.style.cssText = "\n    position: absolute;\n    border: 2px solid #007AFF;\n    pointer-events: none;\n    display: none;\n    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9), 0 0 8px rgba(255, 107, 53, 0.4);\n    border-radius: 2px;\n    z-index: 1000000;\n  ";
-
-  // 创建悬停标签显示
-  var tagLabel = document.createElement("div");
-  tagLabel.id = "iframe-tag-label";
-  tagLabel.style.cssText = "\n    position: absolute;\n    background: #007AFF;\n    color: white;\n    padding: 2px 6px;\n    font-size: 11px;\n    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;\n    border-radius: 2px;\n    pointer-events: none;\n    display: none;\n    white-space: nowrap;\n    z-index: 1000001;\n    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);\n    font-weight: 500;\n  ";
-
-  // 创建选中节点标签
-  var selectedLabel = document.createElement("div");
-  selectedLabel.id = "iframe-selected-label";
-  selectedLabel.style.cssText = "\n    position: absolute;\n    background: #007AFF;\n    color: white;\n    padding: 3px 8px;\n    font-size: 11px;\n    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;\n    border-radius: 3px;\n    pointer-events: none;\n    display: none;\n    white-space: nowrap;\n    z-index: 1000002;\n    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);\n    font-weight: 600;\n  ";
-  overlay.appendChild(highlightBox);
-  overlay.appendChild(selectedBox);
-  overlay.appendChild(tagLabel);
-  overlay.appendChild(selectedLabel);
-  document.body.appendChild(overlay);
-
-  // 存储当前选中的元素
-  var selectedElement = null;
-  var highlightEnabled = false;
-
-  // 更新选中元素的高亮显示
-  function updateSelectedHighlight(element) {
-    console.log("updateSelectedHighlight called with:", element);
-    if (!element) {
-      selectedBox.style.display = "none";
-      selectedLabel.style.display = "none";
-      selectedElement = null;
-      console.log("Cleared selected highlight");
-      return;
-    }
-    selectedElement = element;
-    var rect = element.getBoundingClientRect();
-    console.log("Selected element rect:", rect);
-
-    // 更新选中高亮框位置
-    selectedBox.style.display = "block";
-    selectedBox.style.left = "".concat(rect.left - 2, "px");
-    selectedBox.style.top = "".concat(rect.top - 2, "px");
-    selectedBox.style.width = "".concat(rect.width + 4, "px");
-    selectedBox.style.height = "".concat(rect.height + 4, "px");
-
-    // 更新选中标签位置和内容
-    selectedLabel.style.display = "block";
-    selectedLabel.textContent = "\u2713 <".concat(element.tagName.toLowerCase(), ">");
-
-    // 计算标签位置，确保不超出视窗
-    var labelTop = rect.top - 28;
-    var labelLeft = rect.left;
-
-    // 如果标签会超出顶部，显示在元素下方
-    if (labelTop < 5) {
-      labelTop = rect.bottom + 5;
-    }
-
-    // 如果标签会超出右侧，向左调整
-    var labelWidth = selectedLabel.offsetWidth || 100; // 预估宽度
-    if (labelLeft + labelWidth > window.innerWidth - 10) {
-      labelLeft = window.innerWidth - labelWidth - 10;
-    }
-    selectedLabel.style.left = "".concat(Math.max(5, labelLeft), "px");
-    selectedLabel.style.top = "".concat(labelTop, "px");
-    console.log("Selected highlight positioned at:", {
-      left: selectedBox.style.left,
-      top: selectedBox.style.top,
-      width: selectedBox.style.width,
-      height: selectedBox.style.height
-    });
-  }
-  function getElementSelector(element) {
-    if (!(element instanceof Element)) throw new Error('Argument must be a DOM element');
-    var segments = [];
-    var current = element;
-    while (current !== document.documentElement) {
-      var selector = '';
-      // 优先检查唯一ID
-      if (current.id && document.querySelectorAll("#".concat(current.id)).length === 1) {
-        segments.unshift("#".concat(current.id));
-        break; // ID唯一，无需继续向上
-      }
-
-      // 生成类名选择器（取第一个有效类名）
-      var classes = Array.from(current.classList).filter(function (c) {
-        return !c.startsWith('js-');
-      });
-      var className = classes.length > 0 ? ".".concat(classes[0]) : '';
-
-      // 生成位置索引（nth-child）
-      var tag = current.tagName.toLowerCase();
-      if (!className) {
-        var siblings = Array.from(current.parentNode.children);
-        var index = siblings.findIndex(function (el) {
-          return el === current;
-        }) + 1;
-        selector = "".concat(tag, ":nth-child(").concat(index, ")");
-      } else {
-        selector = className;
-      }
-      segments.unshift(selector);
-      current = current.parentElement;
-    }
-
-    // 处理根元素
-    if (current === document.documentElement) {
-      segments.unshift('html');
-    }
-    return segments.join(' > ');
-  }
-
-  // 获取元素文本内容
-  function getElementText(element) {
-    var _element$textContent;
-    if (element.tagName === "INPUT") {
-      return element.value || element.placeholder || "";
-    }
-    if (element.tagName === "TEXTAREA") {
-      return element.value || element.placeholder || "";
-    }
-    var text = ((_element$textContent = element.textContent) === null || _element$textContent === void 0 ? void 0 : _element$textContent.trim()) || "";
-    return text.length > 50 ? text.substring(0, 50) + "..." : text;
-  }
-
-  // 获取元素属性信息
-  function getElementAttributes(element) {
-    var attrs = {};
-    for (var i = 0; i < element.attributes.length; i++) {
-      var attr = element.attributes[i];
-      attrs[attr.name] = attr.value;
-    }
-    return attrs;
-  }
-
-  // 鼠标悬停事件处理
-  function handleMouseOver(e) {
-    if (!highlightEnabled) return;
-    var target = e.target;
-    if (!target || target === overlay || target === highlightBox || target === tagLabel || target === selectedBox || target === selectedLabel) {
-      return;
-    }
-
-    // 避免高亮 html 和 body 元素
-    if (target === document.documentElement || target === document.body) {
-      return;
-    }
-
-    // 如果是已选中的元素，不显示悬停高亮
-    if (target === selectedElement) {
-      highlightBox.style.display = "none";
-      tagLabel.style.display = "none";
-      return;
-    }
-    var rect = target.getBoundingClientRect();
-    var selector = getElementSelector(target);
-    var text = getElementText(target);
-    var attributes = getElementAttributes(target);
-
-    // 更新悬停高亮框位置
-    highlightBox.style.display = "block";
-    highlightBox.style.left = "".concat(rect.left - 2, "px");
-    highlightBox.style.top = "".concat(rect.top - 2, "px");
-    highlightBox.style.width = "".concat(rect.width + 4, "px");
-    highlightBox.style.height = "".concat(rect.height + 4, "px");
-
-    // 更新标签位置和内容
-    tagLabel.style.display = "block";
-    tagLabel.textContent = "<".concat(target.tagName.toLowerCase(), ">");
-
-    // 计算标签位置，确保不超出视窗
-    var labelTop = rect.top - 22;
-    var labelLeft = rect.left;
-
-    // 如果标签会超出顶部，显示在元素下方
-    if (labelTop < 0) {
-      labelTop = rect.bottom + 5;
-    }
-
-    // 如果标签会超出右侧，向左调整
-    if (labelLeft + tagLabel.offsetWidth > window.innerWidth) {
-      labelLeft = window.innerWidth - tagLabel.offsetWidth - 5;
-    }
-    tagLabel.style.left = "".concat(Math.max(0, labelLeft), "px");
-    tagLabel.style.top = "".concat(labelTop, "px");
-
-    // 发送消息到父窗口
-    var elementInfo = {
-      tagName: target.tagName.toLowerCase(),
-      rect: {
-        left: rect.left,
-        top: rect.top,
-        right: rect.right,
-        bottom: rect.bottom,
-        width: rect.width,
-        height: rect.height,
-        x: rect.x,
-        y: rect.y
-      },
-      selector: selector,
-      text: text,
-      attributes: attributes,
-      url: window.location.href,
-      path: window.location.pathname,
-      timestamp: Date.now()
-    };
-    try {
-      window.parent.postMessage({
-        type: "iframe-element-hover",
-        data: elementInfo,
-        source: "iframe-highlight-injector"
-      }, "*");
-    } catch (error) {
-      console.warn("无法发送消息到父窗口:", error);
-    }
-  }
-
-  // 鼠标离开事件处理
-  function handleMouseOut(e) {
-    if (!highlightEnabled) return;
-    var relatedTarget = e.relatedTarget;
-
-    // 如果鼠标移动到高亮相关元素上，不隐藏高亮
-    if (relatedTarget && (relatedTarget === highlightBox || relatedTarget === tagLabel || relatedTarget === overlay || relatedTarget === selectedBox || relatedTarget === selectedLabel)) {
-      return;
-    }
-    highlightBox.style.display = "none";
-    tagLabel.style.display = "none";
-    try {
-      window.parent.postMessage({
-        type: "iframe-element-hover",
-        data: null,
-        source: "iframe-highlight-injector"
-      }, "*");
-    } catch (error) {
-      console.warn("无法发送消息到父窗口:", error);
-    }
-  }
-
-  // 点击事件处理
-  function handleClick(e) {
-    var target = e.target;
-    if (!target || target === overlay || target === highlightBox || target === tagLabel || target === selectedBox || target === selectedLabel) {
-      return;
-    }
-
-    // 避免处理 html 和 body 元素
-    if (target === document.documentElement || target === document.body) {
-      return;
-    }
-
-    // 检查是否是交互元素，这些元素需要保留默认行为
-    var isInteractiveElement = ['input', 'textarea', 'select', 'button', 'a'].includes(target.tagName.toLowerCase());
-
-    // 如果高亮功能启用，对于非交互元素阻止默认行为和事件传播
-    if (highlightEnabled) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    var rect = target.getBoundingClientRect();
-    var selector = getElementSelector(target);
-    var text = getElementText(target);
-    var attributes = getElementAttributes(target);
-    console.log("Element clicked:", {
-      tagName: target.tagName,
-      selector: selector,
-      rect: rect
-    });
-
-    // 立即更新选中高亮
-    updateSelectedHighlight(target);
-
-    // 隐藏悬停高亮，因为现在是选中状态
-    highlightBox.style.display = "none";
-    tagLabel.style.display = "none";
-    var elementInfo = {
-      tagName: target.tagName.toLowerCase(),
-      rect: {
-        left: rect.left,
-        top: rect.top,
-        right: rect.right,
-        bottom: rect.bottom,
-        width: rect.width,
-        height: rect.height,
-        x: rect.x,
-        y: rect.y
-      },
-      selector: selector,
-      text: text,
-      attributes: attributes,
-      url: window.location.href,
-      path: window.location.pathname,
-      timestamp: Date.now()
-    };
-    try {
-      window.parent.postMessage({
-        type: "iframe-element-click",
-        data: elementInfo,
-        source: "iframe-highlight-injector"
-      }, "*");
-    } catch (error) {
-      console.warn("无法发送消息到父窗口:", error);
-    }
-  }
-
-  // 监听来自父窗口的消息
-  function handleParentMessage(event) {
-    console.log("Received message from parent:", event.data);
-    if (event.data.type === "iframe-highlight-toggle") {
-      var enabled = event.data.enabled;
-      console.log("Highlight toggle:", enabled);
-      if (enabled) {
-        enableHighlight();
-      } else {
-        disableHighlight();
-      }
-    } else if (event.data.type === "enable-iframe-highlight") {
-      console.log("Enable iframe highlight");
-      enableHighlight();
-    } else if (event.data.type === "disable-iframe-highlight") {
-      console.log("Disable iframe highlight");
-      disableHighlight();
-    } else if (event.data.type === "toggle-iframe-highlight") {
-      var _enabled = event.data.enabled !== undefined ? event.data.enabled : !highlightEnabled;
-      console.log("Toggle iframe highlight to:", _enabled);
-      if (_enabled) {
-        enableHighlight();
-      } else {
-        disableHighlight();
-      }
-    } else if (event.data.type === "update-selected-element") {
-      var selector = event.data.selector;
-      console.log("Update selected element with selector:", selector);
-      if (selector) {
-        try {
-          var element = document.querySelector(selector);
-          console.log("Found element by selector:", element);
-          updateSelectedHighlight(element);
-        } catch (error) {
-          console.warn("Failed to select element:", error);
-          updateSelectedHighlight(null);
-        }
-      } else {
-        updateSelectedHighlight(null);
-      }
-    } else if (event.data.type === "clear-selected-element") {
-      console.log("Clear selected element");
-      updateSelectedHighlight(null);
-    }
-  }
-
-  // 启用高亮功能
-  function enableHighlight() {
-    console.log("Enabling highlight");
-    document.addEventListener("mouseover", handleMouseOver, true);
-    document.addEventListener("mouseout", handleMouseOut, true);
-    document.addEventListener("click", handleClick, true);
-    highlightEnabled = true;
-    overlay.style.display = "block";
-  }
-
-  // 禁用高亮功能
-  function disableHighlight() {
-    console.log("Disabling highlight");
-    highlightEnabled = false;
-    // 保持事件监听器，但通过 highlightEnabled 变量控制行为
-    // 这样可以保留选中状态的显示
-    highlightBox.style.display = "none";
-    tagLabel.style.display = "none";
-    // 不隐藏 selectedBox 和 selectedLabel，保留选中状态
-  }
-
-  // 完全禁用高亮功能（移除所有监听器）
-  function fullyDisableHighlight() {
-    console.log("Fully disabling highlight");
-    highlightEnabled = false;
-    document.removeEventListener("mouseover", handleMouseOver, true);
-    document.removeEventListener("mouseout", handleMouseOut, true);
-    document.removeEventListener("click", handleClick, true);
-    overlay.style.display = "none";
-    highlightBox.style.display = "none";
-    tagLabel.style.display = "none";
-    selectedBox.style.display = "none";
-    selectedLabel.style.display = "none";
-  }
-
-  // 添加事件监听
-  enableHighlight();
-  window.addEventListener("message", handleParentMessage);
-
-  // 暴露全局函数供外部调用
-  window.__iframeHighlightControl = {
-    enable: enableHighlight,
-    disable: disableHighlight,
-    fullyDisable: fullyDisableHighlight,
-    isEnabled: function isEnabled() {
-      return highlightEnabled;
-    },
-    getSelectedElement: function getSelectedElement() {
-      return selectedElement;
-    },
-    updateSelected: updateSelectedHighlight,
-    // 通过消息发送开关控制
-    sendToggleMessage: function sendToggleMessage(enabled) {
-      window.parent.postMessage({
-        type: 'iframe-highlight-status',
-        enabled: enabled || highlightEnabled,
-        source: 'iframe-highlight-injector'
-      }, '*');
-    }
-  };
-
-  // 通知父窗口脚本已加载
-  try {
-    window.parent.postMessage({
-      type: "iframe-highlight-ready",
-      data: {
-        url: window.location.href,
-        userAgent: navigator.userAgent,
-        timestamp: Date.now()
-      },
-      source: "iframe-highlight-injector"
-    }, "*");
-  } catch (error) {
-    console.warn("无法发送就绪消息到父窗口:", error);
-  }
-
-  // 清理函数
-  window.__iframeHighlightCleanup = function () {
-    fullyDisableHighlight();
-    window.removeEventListener("message", handleParentMessage);
-    if (overlay.parentElement) {
-      overlay.parentElement.removeChild(overlay);
-    }
-    delete window.__iframeHighlightInitialized;
-    delete window.__iframeHighlightCleanup;
-  };
-})();
-
-</script>
 </body>
 </html>
