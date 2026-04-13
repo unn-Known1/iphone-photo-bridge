@@ -11,10 +11,14 @@ Direct iPhone to Linux photo backup via WebDAV with HTTPS support - compatible w
 - **All Formats Supported** - HEIC, HEIF, JPEG, PNG, RAW/DNG, ProRAW, Live Photos
 - **Metadata Preservation** - EXIF data, GPS coordinates, dates, camera info kept intact
 - **Local Network Only** - Your photos never leave your network
-- **Auto-Organization** - Automatic date-based folder structure
-- **Real-time Dashboard** - Monitor uploads, connections, and storage
+- **Auto-Organization** - Automatic date-based folder structure (YYYY/MM/DD)
+- **Duplicate Detection** - MD5 hash-based detection prevents backing up the same photo twice
+- **Real-time Dashboard** - Monitor uploads, connections, and storage with live updates
+- **Photo Gallery** - Browse backed up photos with real-time thumbnails
 - **QR Code Connection** - Easy iPhone connection via QR code
-- **Auto-Generated SSL** - Self-signed certificates for HTTPS (iOS compatible)
+- **Auto-Generated SSL** - Self-signed certificates with OpenSSL fallback for HTTPS (iOS compatible)
+- **Toast Notifications** - Get instant feedback on uploads, duplicates, and server status
+- **Server Statistics** - Track active connections and server uptime
 
 ## Requirements
 
@@ -114,6 +118,29 @@ iphone-photo-bridge/
 └── README.md
 ```
 
+## Data Storage
+
+Files are organized as follows:
+
+```
+~/.iPhonePhotoBridge/
+├── config.json           # User configuration
+└── certs/
+    ├── server.key       # SSL private key
+    └── server.crt       # SSL certificate
+
+~/iPhonePhotoBridge/
+├── Backups/             # Uploaded photos
+│   ├── IMG_0001.jpg
+│   └── 2024/
+│       └── 01/
+│           └── 15/
+│               └── IMG_0002.heic
+└── MetaData/            # Photo metadata (JSON files)
+    ├── a1b2c3d4.json    # Hash-based metadata
+    └── e5f6g7h8.json
+```
+
 ## Supported Formats
 
 | Format | Extension | Support |
@@ -129,11 +156,43 @@ iphone-photo-bridge/
 ## How It Works
 
 1. **Server**: Node.js runs a WebDAV server with HTTPS support
-2. **Certificate**: Auto-generates self-signed SSL certificate
+2. **Certificate**: Auto-generates self-signed SSL certificate (with OpenSSL fallback)
 3. **Connection**: iPhone connects via Files app using WebDAV protocol
 4. **Transfer**: Photos are transferred over local network
 5. **Storage**: Files saved to `~/iPhonePhotoBridge/Backups`
 6. **Metadata**: JSON files created for each photo with full metadata
+7. **Organization**: Files auto-organized into YYYY/MM/DD folders
+8. **Duplicate Check**: MD5 hashes prevent duplicate uploads
+
+## New Features Explained
+
+### Duplicate Detection
+When you upload a photo, iPhone Photo Bridge calculates its MD5 hash and checks against a database of previously uploaded files. If the hash matches, the file is marked as a duplicate and skipped. You'll see a toast notification: "Duplicate: filename already exists"
+
+### Auto-Organization
+Enable "Auto-organize by Date" in settings to automatically organize photos into a date-based folder structure:
+```
+~/iPhonePhotoBridge/Backups/
+├── 2024/
+│   ├── 01/
+│   │   ├── 15/
+│   │   │   ├── IMG_0001.jpg
+│   │   │   └── IMG_0002.heic
+│   │   └── 16/
+│   │       └── IMG_0003.png
+```
+
+### Photo Gallery
+The gallery view displays all backed up photos with:
+- Lazy-loaded thumbnails for performance
+- Video indicator badges for MOV/MP4 files
+- Filename and file size on hover
+- Format badge in corner
+
+### Server Statistics
+- **Active Connections**: Shows how many devices are connected
+- **Uptime Timer**: Tracks how long the server has been running
+- **Upload Activity**: Real-time feed of file uploads with status icons
 
 ## Security
 
@@ -158,6 +217,21 @@ iphone-photo-bridge/
 - Check if the server is running (look at the terminal)
 - Ensure your firewall allows connections on port 8080
 - Verify the IP address is correct
+
+### Duplicate Files Not Detected
+- Make sure you're copying files from the same source
+- The hash is calculated from file content, not filename
+- Renaming a file won't change its hash
+
+### Thumbnails Not Loading in Gallery
+- Ensure the WebDAV server is running
+- Check that photos have been successfully uploaded
+- Verify the network connection to the server
+
+### SSL Certificate Generation Fails
+- Ensure OpenSSL is installed on your system (`sudo apt install openssl`)
+- Check that the `.iPhonePhotoBridge/certs` directory is writable
+- The server will fall back to Node.js crypto if OpenSSL is unavailable
 
 ## License
 

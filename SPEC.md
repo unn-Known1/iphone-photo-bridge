@@ -137,15 +137,30 @@
 - Optional location-based folders
 - Album preservation from iPhone
 - Custom organization rules
-- Duplicate detection (by hash)
+- **Duplicate detection (by MD5 hash)** - Detects and skips duplicate files
 
 #### F6: Gallery View
 - Browse all backed up photos
+- **Real-time photo thumbnails** loaded via API
+- Lazy loading for performance
+- **Video indicator badges** for MOV/MP4 files
 - Filter by date, format, location
 - Search by metadata
 - Full-screen preview
 - Download individual photos
 - Delete with confirmation
+
+#### F7: SSL Certificate Generation
+- **OpenSSL fallback** for certificate generation
+- **Node.js crypto fallback** if OpenSSL unavailable
+- **IP San included** for local network compatibility
+- **One-click certificate download** from web interface
+
+#### F8: Connection Statistics
+- **Active connection counter** with real-time updates
+- **Server uptime timer**
+- **Upload activity feed** with status indicators
+- **Toast notifications** for user feedback
 
 ### User Interactions
 

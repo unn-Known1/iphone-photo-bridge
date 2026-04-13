@@ -5,7 +5,6 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { createServer } = require('http');
 const crypto = require('crypto');
 
 const app = express();
@@ -21,8 +20,12 @@ let serverState = {
   localIp: '',
   port: 8080,
   https: false,
-  connections: 0
+  connections: 0,
+  startTime: null
 };
+
+// Known file hashes for duplicate detection
+let knownHashes = new Set();
 
 // Event listeners for SSE
 let eventListeners = [];
@@ -43,68 +46,30 @@ function getLocalIp() {
 // Get backup path
 function getBackupPath() {
   const home = process.env.HOME || '/root';
+  const configPath = path.join(home, '.iPhonePhotoBridge', 'config.json');
+
+  // Check for custom config
+  if (fs.existsSync(configPath)) {
+    try {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      if (config.backupPath) {
+        return path.resolve(config.backupPath.replace('~', home));
+      }
+    } catch (e) {
+      // Use default
+    }
+  }
+
   return path.join(home, 'iPhonePhotoBridge', 'Backups');
 }
 
 // Get certs path
 function getCertsPath() {
   const home = process.env.HOME || '/root';
-  return path.join(home, 'iPhonePhotoBridge', 'certs');
+  return path.join(home, '.iPhonePhotoBridge', 'certs');
 }
 
-// Generate self-signed certificate
-function generateCerts() {
-  const certsPath = getCertsPath();
-  const keyPath = path.join(certsPath, 'server.key');
-  const certPath = path.join(certsPath, 'server.crt');
-
-  if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
-    return { key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) };
-  }
-
-  fs.mkdirSync(certsPath, { recursive: true });
-
-  const { privateKey, certificate } = crypto.generateKeyPairSync('rsa', {
-    name: 'rsa',
-    modulusLength: 2048,
-  });
-
-  const cert = crypto.createSignMock || (() => {
-    const localIp = getLocalIp();
-    const attrs = [{ name: 'commonName', value: localIp }, { name: 'localityName', value: 'Local' }];
-    const ext = [
-      { name: 'subjectAltName', values: [`IP:${localIp}`, `DNS:localhost`, `DNS:${localIp}`] },
-      { name: 'keyUsage', value: { digitalSignature: true, keyEncipherment: true } },
-      { name: 'extKeyUsage', value: { serverAuth: true } }
-    ];
-
-    return crypto.createSelfSignedSessionTicket({
-      keys: { privateKey, certificate },
-      notBefore: new Date(),
-      notAfter: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-      serialNumber: crypto.randomBytes(16).toString('hex'),
-      extensions: ext,
-      subject: attrs,
-      issuer: attrs
-    });
-  })();
-
-  // Simple self-signed cert using crypto
-  const certPem = `-----BEGIN CERTIFICATE-----
-${Buffer.from(certificate).toString('base64').match(/.{1,64}/g).join('\n')}
------END CERTIFICATE-----`;
-
-  const keyPem = `-----BEGIN RSA PRIVATE KEY-----
-${privateKey.export({ type: 'pkcs1', format: 'pem' }).toString('base64').match(/.{1,64}/g).join('\n')}
------END RSA PRIVATE KEY-----`;
-
-  fs.writeFileSync(keyPath, keyPem);
-  fs.writeFileSync(certPath, certPem);
-
-  return { key: keyPem, cert: certPem };
-}
-
-// Generate certificate using openssl fallback
+// Generate self-signed certificate using Node.js crypto
 async function generateSSLCerts() {
   const certsPath = getCertsPath();
   const keyPath = path.join(certsPath, 'server.key');
@@ -118,36 +83,103 @@ async function generateSSLCerts() {
 
   const localIp = getLocalIp();
 
-  // Generate certificate using openssl
-  const subject = `/C=US/ST=Local/L=Local/O=iPhonePhotoBridge/CN=${localIp}`;
-
-  return new Promise((resolve, reject) => {
-    const { execSync } = require('child_process');
-
-    try {
-      execSync(`openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -subj "${subject}" -keyout "${keyPath}" -out "${certPath}" -addext "subjectAltName=IP:${localIp},DNS:localhost,DNS:${localIp}"`, { stdio: 'pipe' });
-      resolve({ key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) });
-    } catch (e) {
-      // Fallback: generate basic cert
-      const { privateKey, publicKey } = crypto.generateKeyPairSyncSync('rsa', { modulusLength: 2048 });
-      const cert = `-----BEGIN CERTIFICATE-----
-MIICpDCCAYwCCQDU+pQ4P3c7PzANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDDAls
-b2NhbGhvc3QwHhcNMjUwMzMwMTAwMDAwWhcNMjYwMzI5MTAwMDAwWjAUMRIwEAYD
-VQQDDAlsb2NhbGhvc3QwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC7
-o5E7V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5
-V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V
-5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5
-V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5
-V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5
-AgMBAAEwDQYJKoZIhvcNAQELBQADggEBADe3Y9R9O5V5V5V5V5V5V5V5V5V5V5V5V
-V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5
-V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5V5
------END CERTIFICATE-----`;
-      fs.writeFileSync(keyPath, privateKey.export({ type: 'pkcs1', format: 'pem' }));
-      fs.writeFileSync(certPath, cert);
-      resolve({ key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) });
+  // Generate key pair
+  const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+    publicKeyEncoding: {
+      type: 'spki',
+      format: 'pem'
+    },
+    privateKeyEncoding: {
+      type: 'pkcs8',
+      format: 'pem'
     }
   });
+
+  // Create self-signed certificate
+  const certAttributes = [
+    { name: 'commonName', value: localIp },
+    { name: 'countryName', value: 'US' },
+    { name: 'stateOrProvinceName', value: 'Local' },
+    { name: 'localityName', value: 'Local' },
+    { name: 'organizationName', value: 'iPhonePhotoBridge' }
+  ];
+
+  const certExtensions = [
+    {
+      name: 'basicConstraints',
+      critical: true,
+      cA: false,
+      pathLenConstraint: 0
+    },
+    {
+      name: 'keyUsage',
+      critical: true,
+      keyCertSign: false,
+      digitalSignature: true,
+      keyEncipherment: true
+    },
+    {
+      name: 'extKeyUsage',
+      serverAuth: true
+    },
+    {
+      name: 'subjectAltName',
+      altNames: [
+        { type: 7, ip: Buffer.from(localIp.split('.').map(n => parseInt(n, 10))) }, // IP
+        { type: 2, value: 'localhost' }, // DNS
+        { type: 2, value: localIp } // DNS
+      ]
+    }
+  ];
+
+  const cert = crypto.createCertificate({
+    subject: certAttributes,
+    issuer: certAttributes,
+    publicKey: publicKey,
+    serialNumber: crypto.randomBytes(16).toString('hex'),
+    notBefore: new Date(),
+    notAfter: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+    extensions: certExtensions,
+    algorithm: 'sha256'
+  });
+
+  const certPem = cert.toString('pem');
+  const keyPem = privateKey;
+
+  fs.writeFileSync(keyPath, keyPem);
+  fs.writeFileSync(certPath, certPem);
+
+  console.log('SSL certificates generated successfully');
+
+  return { key: keyPem, cert: certPem };
+}
+
+// Generate certificate using openssl fallback
+async function generateCertsWithOpenSSL() {
+  const certsPath = getCertsPath();
+  const keyPath = path.join(certsPath, 'server.key');
+  const certPath = path.join(certsPath, 'server.crt');
+
+  if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+    return { key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) };
+  }
+
+  fs.mkdirSync(certsPath, { recursive: true });
+
+  const localIp = getLocalIp();
+  const { execSync } = require('child_process');
+
+  const subject = `/C=US/ST=Local/L=Local/O=iPhonePhotoBridge/CN=${localIp}`;
+
+  try {
+    execSync(`openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -subj "${subject}" -keyout "${keyPath}" -out "${certPath}" -addext "subjectAltName=IP:${localIp},DNS:localhost,DNS:${localIp}"`, { stdio: 'pipe' });
+    console.log('SSL certificates generated using openssl');
+    return { key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) };
+  } catch (e) {
+    console.error('OpenSSL failed, using Node.js crypto for certificate generation');
+    return await generateSSLCerts();
+  }
 }
 
 // Emit event to all listeners
@@ -161,10 +193,51 @@ function emitEvent(data) {
   });
 }
 
+// Increment connection count
+function incrementConnections() {
+  serverState.connections++;
+  emitEvent({ type: 'connection', count: serverState.connections });
+}
+
+// Decrement connection count
+function decrementConnections() {
+  serverState.connections = Math.max(0, serverState.connections - 1);
+  emitEvent({ type: 'connection', count: serverState.connections });
+}
+
+// Load known hashes from existing metadata
+function loadKnownHashes() {
+  const metadataDir = path.join(path.dirname(getBackupPath()), 'MetaData');
+
+  if (!fs.existsSync(metadataDir)) {
+    return;
+  }
+
+  try {
+    const files = fs.readdirSync(metadataDir);
+    for (const file of files) {
+      if (file.endsWith('.json')) {
+        try {
+          const hash = file.replace('.json', '');
+          knownHashes.add(hash);
+        } catch (e) {
+          // Skip
+        }
+      }
+    }
+    console.log(`Loaded ${knownHashes.size} known file hashes`);
+  } catch (e) {
+    console.error('Error loading known hashes:', e);
+  }
+}
+
 // Load saved photos from metadata
 function loadPhotos() {
   const metadataDir = path.join(path.dirname(getBackupPath()), 'MetaData');
   const photos = [];
+  const localIp = getLocalIp();
+  const port = serverState.port || 3000;
+  const protocol = serverState.https ? 'https' : 'http';
 
   if (!fs.existsSync(metadataDir)) {
     return photos;
@@ -176,13 +249,16 @@ function loadPhotos() {
       if (file.endsWith('.json')) {
         try {
           const data = JSON.parse(fs.readFileSync(path.join(metadataDir, file), 'utf8'));
+          const hash = data.hash || path.basename(file, '.json');
           photos.push({
-            id: data.hash || path.basename(file, '.json'),
+            id: hash,
             filename: data.filename,
             path: data.path,
             size: data.size,
             format: data.format,
             dateCreated: data.dateCreated,
+            // Add thumbnail URL
+            thumbnailUrl: `${protocol}://${localIp}:${port}/api/thumbnail/${hash}`,
             metadata: data
           });
         } catch (e) {
@@ -197,8 +273,32 @@ function loadPhotos() {
   return photos.sort((a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime());
 }
 
+// Organize file path by date
+function organizeByDate(filePath, autoOrganize) {
+  if (!autoOrganize) return filePath;
+
+  try {
+    const stat = fs.statSync(filePath);
+    const date = stat.mtime || new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    const dir = path.dirname(filePath);
+    const organizedDir = path.join(dir, year, month, day);
+
+    if (!fs.existsSync(organizedDir)) {
+      fs.mkdirSync(organizedDir, { recursive: true });
+    }
+
+    return path.join(organizedDir, path.basename(filePath));
+  } catch (e) {
+    return filePath;
+  }
+}
+
 // Create WebDAV server
-function createWebDAVServer(port, useHttps = false) {
+function createWebDAVServer(port, useHttps = false, autoOrganize = true) {
   return new Promise(async (resolve, reject) => {
     const backupPath = getBackupPath();
 
@@ -212,10 +312,13 @@ function createWebDAVServer(port, useHttps = false) {
       fs.mkdirSync(metadataDir, { recursive: true });
     }
 
+    // Load known hashes for duplicate detection
+    loadKnownHashes();
+
     let credentials = null;
     if (useHttps) {
       try {
-        credentials = await generateSSLCerts();
+        credentials = await generateCertsWithOpenSSL();
       } catch (e) {
         console.log('SSL cert generation failed, falling back to HTTP');
         useHttps = false;
@@ -224,10 +327,14 @@ function createWebDAVServer(port, useHttps = false) {
 
     const httpServer = useHttps && credentials
       ? https.createServer({ key: credentials.key, cert: credentials.cert }, (req, res) => {
-          handleWebDAVRequest(req, res, backupPath, metadataDir);
+          incrementConnections();
+          req.on('close', () => decrementConnections());
+          handleWebDAVRequest(req, res, backupPath, metadataDir, autoOrganize);
         })
-      : createServer((req, res) => {
-          handleWebDAVRequest(req, res, backupPath, metadataDir);
+      : http.createServer((req, res) => {
+          incrementConnections();
+          req.on('close', () => decrementConnections());
+          handleWebDAVRequest(req, res, backupPath, metadataDir, autoOrganize);
         });
 
     httpServer.on('error', (err) => {
@@ -247,7 +354,8 @@ function createWebDAVServer(port, useHttps = false) {
         localIp,
         port,
         https: useHttps,
-        connections: 0
+        connections: 0,
+        startTime: new Date().toISOString()
       };
 
       if (useHttps) {
@@ -256,13 +364,14 @@ function createWebDAVServer(port, useHttps = false) {
         server = httpServer;
       }
 
+      console.log(`WebDAV server running on ${protocol}://${localIp}:${port}`);
       resolve(serverState);
     });
   });
 }
 
 // Handle WebDAV requests
-function handleWebDAVRequest(req, res, backupPath, metadataDir) {
+function handleWebDAVRequest(req, res, backupPath, metadataDir, autoOrganize) {
   const url = new URL(req.url, `http://localhost:${serverState.port}`);
   let pathname = decodeURIComponent(url.pathname);
 
@@ -297,13 +406,13 @@ function handleWebDAVRequest(req, res, backupPath, metadataDir) {
         handlePropfind(req, res, filePath, pathname);
         break;
       case 'PUT':
-        handlePut(req, res, filePath, metadataDir);
+        handlePut(req, res, filePath, metadataDir, autoOrganize);
         break;
       case 'MKCOL':
         handleMkcol(req, res, filePath);
         break;
       case 'DELETE':
-        handleDelete(req, res, filePath);
+        handleDelete(req, res, filePath, metadataDir);
         break;
       case 'MOVE':
         handleMove(req, res, filePath);
@@ -370,8 +479,15 @@ function handleGet(req, res, filePath) {
 function handlePropfind(req, res, filePath, urlPath) {
   const depth = req.headers.depth || '1';
 
+  // Create directory if it doesn't exist
   if (!fs.existsSync(filePath)) {
-    fs.mkdirSync(filePath, { recursive: true });
+    try {
+      fs.mkdirSync(filePath, { recursive: true });
+    } catch (e) {
+      res.writeHead(404);
+      res.end('Not found');
+      return;
+    }
   }
 
   const stat = fs.statSync(filePath);
@@ -437,7 +553,12 @@ function createResponse(href, stat) {
 
 function escapeXml(str) {
   if (!str) return '';
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }
 
 function getMimeType(filePath) {
@@ -454,35 +575,84 @@ function getMimeType(filePath) {
     '.tif': 'image/tiff',
     '.dng': 'image/x-adobe-dng',
     '.raw': 'image/x-raw',
+    '.cr2': 'image/x-canon-cr2',
+    '.nef': 'image/x-nikon-nef',
+    '.arw': 'image/x-sony-arw',
     '.mov': 'video/quicktime',
     '.mp4': 'video/mp4',
+    '.json': 'application/json',
+    '.xml': 'application/xml',
   };
   return mimeTypes[ext] || 'application/octet-stream';
 }
 
-function handlePut(req, res, filePath, metadataDir) {
+function handlePut(req, res, filePath, metadataDir, autoOrganize) {
   const dir = path.dirname(filePath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
 
   const chunks = [];
-  req.on('data', chunk => chunks.push(chunk));
+  let totalSize = 0;
+
+  req.on('data', chunk => {
+    chunks.push(chunk);
+    totalSize += chunk.length;
+  });
 
   req.on('end', () => {
     const buffer = Buffer.concat(chunks);
-    fs.writeFileSync(filePath, buffer);
 
-    const filename = path.basename(filePath);
+    // Calculate hash for duplicate detection
     const hash = crypto.createHash('md5').update(buffer).digest('hex');
+
+    // Check for duplicate
+    if (knownHashes.has(hash)) {
+      emitEvent({
+        type: 'upload',
+        filename: path.basename(filePath),
+        path: filePath,
+        size: buffer.length,
+        progress: 100,
+        status: 'duplicate',
+        hash,
+        duplicate: true
+      });
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: true,
+        duplicate: true,
+        message: 'File already exists (duplicate detected)',
+        hash
+      }));
+      return;
+    }
+
+    // Organize by date if enabled
+    const organizedPath = organizeByDate(filePath, autoOrganize);
+    const organizedDir = path.dirname(organizedPath);
+
+    if (!fs.existsSync(organizedDir)) {
+      fs.mkdirSync(organizedDir, { recursive: true });
+    }
+
+    fs.writeFileSync(organizedPath, buffer);
+
+    const filename = path.basename(organizedPath);
+
+    // Add to known hashes
+    knownHashes.add(hash);
 
     const metadata = {
       filename,
-      path: filePath,
+      path: organizedPath,
       size: buffer.length,
       format: path.extname(filename).slice(1).toUpperCase() || 'Unknown',
       dateCreated: new Date().toISOString(),
-      hash
+      dateModified: new Date().toISOString(),
+      hash,
+      originalName: path.basename(filePath)
     };
 
     const metadataPath = path.join(metadataDir, hash + '.json');
@@ -491,7 +661,7 @@ function handlePut(req, res, filePath, metadataDir) {
     emitEvent({
       type: 'upload',
       filename,
-      path: filePath,
+      path: organizedPath,
       size: buffer.length,
       progress: 100,
       status: 'complete',
@@ -499,8 +669,15 @@ function handlePut(req, res, filePath, metadataDir) {
       metadata
     });
 
-    res.writeHead(201, { 'Location': '/' + path.basename(filePath) });
-    res.end('Created');
+    res.writeHead(201, {
+      'Location': '/' + path.basename(organizedPath),
+      'Content-Type': 'application/json'
+    });
+    res.end(JSON.stringify({
+      success: true,
+      hash,
+      organized: organizedPath !== filePath
+    }));
   });
 }
 
@@ -515,7 +692,7 @@ function handleMkcol(req, res, filePath) {
   res.end('Created');
 }
 
-function handleDelete(req, res, filePath) {
+function handleDelete(req, res, filePath, metadataDir) {
   if (!fs.existsSync(filePath)) {
     res.writeHead(404);
     res.end('Not found');
@@ -539,7 +716,7 @@ function handleMove(req, res, filePath) {
     return;
   }
 
-  const destPath = path.join(getBackupPath(), dest.replace(/^\//, ''));
+  const destPath = path.join(getBackupPath(), decodeURIComponent(dest.replace(/^\//, '')));
 
   if (!fs.existsSync(filePath)) {
     res.writeHead(404);
@@ -571,7 +748,7 @@ function handleCopy(req, res, filePath) {
     return;
   }
 
-  const destPath = path.join(getBackupPath(), dest.replace(/^\//, ''));
+  const destPath = path.join(getBackupPath(), decodeURIComponent(dest.replace(/^\//, '')));
 
   if (!fs.existsSync(filePath)) {
     res.writeHead(404);
@@ -602,16 +779,18 @@ app.post('/api/server/start', async (req, res) => {
   }
 
   const port = req.body.port || 8080;
-  const useHttps = req.body.https !== false; // Default to HTTPS for iOS compatibility
+  const useHttps = req.body.https !== false;
+  const autoOrganize = req.body.autoOrganize !== false;
 
   try {
-    const state = await createWebDAVServer(port, useHttps);
+    const state = await createWebDAVServer(port, useHttps, autoOrganize);
     res.json({
       success: true,
       url: state.url,
       localIp: state.localIp,
       port: state.port,
-      https: state.https
+      https: state.https,
+      startTime: state.startTime
     });
   } catch (err) {
     res.json({ success: false, error: err.message });
@@ -633,28 +812,131 @@ app.post('/api/server/stop', (req, res) => {
 });
 
 app.get('/api/server/status', (req, res) => {
-  res.json(serverState);
+  res.json({
+    ...serverState,
+    uptime: serverState.startTime ?
+      Math.floor((Date.now() - new Date(serverState.startTime).getTime()) / 1000) : 0
+  });
 });
 
 app.get('/api/photos', (req, res) => {
   res.json({ photos: loadPhotos() });
 });
 
+app.get('/api/photos/:hash', (req, res) => {
+  const metadataDir = path.join(path.dirname(getBackupPath()), 'MetaData');
+  const metadataPath = path.join(metadataDir, req.params.hash + '.json');
+
+  if (fs.existsSync(metadataPath)) {
+    res.json(JSON.parse(fs.readFileSync(metadataPath, 'utf8')));
+  } else {
+    res.status(404).json({ error: 'Photo not found' });
+  }
+});
+
+// Serve thumbnail for a photo
+app.get('/api/thumbnail/:hash', (req, res) => {
+  const metadataDir = path.join(path.dirname(getBackupPath()), 'MetaData');
+  const metadataPath = path.join(metadataDir, req.params.hash + '.json');
+
+  if (!fs.existsSync(metadataPath)) {
+    res.status(404).json({ error: 'Photo not found' });
+    return;
+  }
+
+  try {
+    const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+    const photoPath = metadata.path;
+
+    if (!fs.existsSync(photoPath)) {
+      res.status(404).json({ error: 'Photo file not found' });
+      return;
+    }
+
+    // Check if it's an image format we can serve
+    const ext = path.extname(photoPath).toLowerCase();
+    const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif', '.bmp'];
+
+    if (imageExts.includes(ext)) {
+      // Check for cached thumbnail first
+      const thumbnailDir = path.join(path.dirname(getBackupPath()), 'Thumbnails');
+      const thumbnailPath = path.join(thumbnailDir, req.params.hash + '.jpg');
+
+      if (fs.existsSync(thumbnailPath)) {
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.sendFile(thumbnailPath);
+        return;
+      }
+
+      // No thumbnail cache, serve original with caching headers
+      const mimeType = getMimeType(photoPath);
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+      res.sendFile(photoPath);
+    } else {
+      // For non-image files (videos), return a placeholder indicator
+      res.status(200).json({ type: 'video', format: metadata.format });
+    }
+  } catch (e) {
+    console.error('Error serving thumbnail:', e);
+    res.status(500).json({ error: 'Error loading thumbnail' });
+  }
+});
+
 app.get('/api/system/info', (req, res) => {
-  res.json({
+  const backupPath = getBackupPath();
+  const stats = {
     localIp: getLocalIp(),
     homeDir: os.homedir(),
-    backupPath: getBackupPath()
+    backupPath: backupPath,
+    totalPhotos: 0,
+    totalSize: 0,
+    formats: {}
+  };
+
+  // Calculate stats
+  const photos = loadPhotos();
+  stats.totalPhotos = photos.length;
+  photos.forEach(p => {
+    stats.totalSize += p.size || 0;
+    const format = p.format || 'Unknown';
+    stats.formats[format] = (stats.formats[format] || 0) + 1;
   });
+
+  res.json(stats);
 });
 
 app.get('/api/cert', (req, res) => {
   const certPath = path.join(getCertsPath(), 'server.crt');
   if (fs.existsSync(certPath)) {
+    res.setHeader('Content-Type', 'application/x-x509-ca-cert');
+    res.setHeader('Content-Disposition', 'attachment; filename=iphone-photo-bridge.crt');
     res.sendFile(certPath);
   } else {
     res.status(404).send('Certificate not found. Start server with HTTPS first.');
   }
+});
+
+app.get('/api/config', (req, res) => {
+  const configPath = path.join(os.homedir(), '.iPhonePhotoBridge', 'config.json');
+  if (fs.existsSync(configPath)) {
+    res.json(JSON.parse(fs.readFileSync(configPath, 'utf8')));
+  } else {
+    res.json({
+      backupPath: getBackupPath(),
+      autoOrganize: true
+    });
+  }
+});
+
+app.post('/api/config', (req, res) => {
+  const configDir = path.join(os.homedir(), '.iPhonePhotoBridge');
+  if (!fs.existsSync(configDir)) {
+    fs.mkdirSync(configDir, { recursive: true });
+  }
+  const configPath = path.join(configDir, 'config.json');
+  fs.writeFileSync(configPath, JSON.stringify(req.body, null, 2));
+  res.json({ success: true });
 });
 
 app.get('/api/events', (req, res) => {
@@ -663,7 +945,7 @@ app.get('/api/events', (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
-  res.write(`data: ${JSON.stringify({ type: 'connected' })}\n\n`);
+  res.write(`data: ${JSON.stringify({ type: 'connected', count: serverState.connections })}\n\n`);
   eventListeners.push(res);
 
   req.on('close', () => {
